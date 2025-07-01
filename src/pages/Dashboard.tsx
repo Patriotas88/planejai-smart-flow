@@ -1,3 +1,4 @@
+
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,10 @@ import {
   PlusCircle,
   Calendar,
   Target,
-  AlertCircle
+  AlertCircle,
+  Edit,
+  ArrowRight,
+  Receipt
 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -38,6 +42,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
 
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<any>(null);
 
   const currentMonthTransactions = getCurrentMonthTransactions();
   const totalIncome = getTotalIncome();
@@ -53,9 +58,24 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
       const spent = transactions
         .filter(t => t.categoryId === budget.categoryId && t.type === 'expense')
         .reduce((sum, t) => sum + t.amount, 0);
-      return spent / budget.amount > 0.8; // Orçamentos com mais de 80% gastos
+      return spent / budget.amount > 0.8;
     })
     .slice(0, 3);
+
+  const handleEditTransaction = (transaction: any) => {
+    setEditingTransaction(transaction);
+    if (transaction.type === 'income') {
+      setShowIncomeModal(true);
+    } else {
+      setShowExpenseModal(true);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowIncomeModal(false);
+    setShowExpenseModal(false);
+    setEditingTransaction(null);
+  };
 
   return (
     <div className="min-h-screen bg-darker-blue">
@@ -122,7 +142,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
             <CardTitle className="text-white">Ações Rápidas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <Button 
                 className="bg-green-primary hover:bg-green-600 text-white"
                 onClick={() => setShowIncomeModal(true)}
@@ -140,6 +160,14 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
               </Button>
               <Button 
                 variant="outline" 
+                className="border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white"
+                onClick={() => navigate('/transacoes')}
+              >
+                <Receipt className="h-4 w-4 mr-2" />
+                Transações
+              </Button>
+              <Button 
+                variant="outline" 
                 className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white"
                 onClick={() => navigate('/planejamento')}
               >
@@ -148,7 +176,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
               </Button>
               <Button 
                 variant="outline" 
-                className="border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white"
+                className="border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white"
                 onClick={() => navigate('/relatorios')}
               >
                 <Calendar className="h-4 w-4 mr-2" />
@@ -163,7 +191,18 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
           {/* Transações Recentes */}
           <Card className="bg-dark-blue border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white">Transações Recentes</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-white">Transações Recentes</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => navigate('/transacoes')}
+                  className="text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                >
+                  Ver Todas
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -171,22 +210,32 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                   recentTransactions.map((transaction) => {
                     const category = categories.find(c => c.id === transaction.categoryId);
                     return (
-                      <div key={transaction.id} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
+                      <div key={transaction.id} className="flex items-center justify-between group">
+                        <div className="flex items-center space-x-3 flex-1">
                           <div className={`w-2 h-2 rounded-full ${
                             transaction.type === 'income' ? 'bg-green-500' : 'bg-red-500'
                           }`} />
-                          <div>
+                          <div className="flex-1">
                             <p className="text-white font-medium">{transaction.description}</p>
                             <p className="text-gray-400 text-sm">
                               {category?.name} • {new Date(transaction.date).toLocaleDateString('pt-BR')}
                             </p>
                           </div>
                         </div>
-                        <div className={`font-bold ${
-                          transaction.type === 'income' ? 'text-green-500' : 'text-red-500'
-                        }`}>
-                          {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                        <div className="flex items-center space-x-2">
+                          <div className={`font-bold ${
+                            transaction.type === 'income' ? 'text-green-500' : 'text-red-500'
+                          }`}>
+                            {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEditTransaction(transaction)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 p-1 h-6 w-6"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
                     );
@@ -254,14 +303,16 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
       {/* Modais de Transação */}
       <TransactionModal
         open={showIncomeModal}
-        onClose={() => setShowIncomeModal(false)}
+        onClose={handleCloseModal}
         type="income"
+        transaction={editingTransaction?.type === 'income' ? editingTransaction : undefined}
       />
       
       <TransactionModal
         open={showExpenseModal}
-        onClose={() => setShowExpenseModal(false)}
+        onClose={handleCloseModal}
         type="expense"
+        transaction={editingTransaction?.type === 'expense' ? editingTransaction : undefined}
       />
     </div>
   );

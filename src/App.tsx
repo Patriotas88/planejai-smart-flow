@@ -10,6 +10,7 @@ import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import Transacoes from "./pages/Transacoes";
 import Relatorios from "./pages/Relatorios";
 import Categorias from "./pages/Categorias";
 import Perfil from "./pages/Perfil";
@@ -32,6 +33,11 @@ const App = () => (
               <Route path="/dashboard" element={
                 <ProtectedRoute>
                   <Layout><Dashboard /></Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/transacoes" element={
+                <ProtectedRoute>
+                  <Layout><Transacoes /></Layout>
                 </ProtectedRoute>
               } />
               <Route path="/relatorios" element={
