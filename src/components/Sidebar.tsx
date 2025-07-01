@@ -7,7 +7,8 @@ import {
   Calendar,
   LogOut,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Target
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +20,11 @@ const menuItems = [
     path: '/dashboard', 
     icon: BarChart3,
     active: true 
+  },
+  { 
+    title: 'Planejamento', 
+    path: '/planejamento', 
+    icon: Target 
   },
   { 
     title: 'Relatórios', 

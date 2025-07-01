@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Relatorios from "./pages/Relatorios";
 import Categorias from "./pages/Categorias";
 import Perfil from "./pages/Perfil";
+import Planejamento from "./pages/Planejamento";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,11 @@ const App = () => (
               <Route path="/perfil" element={
                 <ProtectedRoute>
                   <Layout><Perfil /></Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/planejamento" element={
+                <ProtectedRoute>
+                  <Layout><Planejamento /></Layout>
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />

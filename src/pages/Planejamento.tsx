@@ -6,188 +6,278 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Target, TrendingUp, Calendar, Save } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Target, TrendingUp, Calendar, Save, AlertCircle } from 'lucide-react';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useFormatCurrency } from '@/hooks/useFormatCurrency';
 import { useApp } from '@/contexts/AppContext';
 import { toast } from 'sonner';
 
 export default function Planejamento() {
-  const [monthlyGoal, setMonthlyGoal] = useState(2000);
-  const [goalInput, setGoalInput] = useState('2000');
-  
-  const { transactions, totalIncome, totalExpense } = useTransactions();
-  const { formatCurrency } = useFormatCurrency();
   const { accountType } = useApp();
+  const { totalIncome, totalExpense, balance, isLoading } = useTransactions();
+  const { formatCurrency } = useFormatCurrency();
+  const [monthlyGoal, setMonthlyGoal] = useState('');
+  const [monthlyIncomeGoal, setMonthlyIncomeGoal] = useState('');
 
-  // Calcular dados do mês atual
-  const currentMonth = new Date().getMonth();
-  const currentMonthTransactions = transactions.filter(t => {
-    const transactionMonth = new Date(t.date).getMonth();
-    return transactionMonth === currentMonth;
-  });
+  // Debug logs
+  console.log('Planejamento data:', { totalIncome, totalExpense, balance, isLoading, accountType });
 
-  const monthlyIncome = currentMonthTransactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + Number(t.amount), 0);
-
-  const monthlyExpense = currentMonthTransactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + Number(t.amount), 0);
-
-  const monthlyBalance = monthlyIncome - monthlyExpense;
-  const goalProgress = Math.min((monthlyBalance / monthlyGoal) * 100, 100);
-
-  // Carregar meta salva do localStorage
+  // Carregar metas salvas
   useEffect(() => {
     const savedGoal = localStorage.getItem(`monthly-goal-${accountType}`);
+    const savedIncomeGoal = localStorage.getItem(`monthly-income-goal-${accountType}`);
+    
+    console.log('Loading saved goals:', { savedGoal, savedIncomeGoal });
+    
     if (savedGoal) {
-      const goal = parseFloat(savedGoal);
-      setMonthlyGoal(goal);
-      setGoalInput(goal.toString());
+      setMonthlyGoal(savedGoal);
+    } else {
+      setMonthlyGoal('2000'); // Valor padrão
+    }
+    
+    if (savedIncomeGoal) {
+      setMonthlyIncomeGoal(savedIncomeGoal);
+    } else {
+      setMonthlyIncomeGoal('5000'); // Valor padrão
     }
   }, [accountType]);
 
-  const handleSaveGoal = () => {
-    const newGoal = parseFloat(goalInput);
-    if (newGoal > 0) {
-      setMonthlyGoal(newGoal);
-      localStorage.setItem(`monthly-goal-${accountType}`, newGoal.toString());
-      toast.success('Meta mensal atualizada com sucesso!');
-    } else {
-      toast.error('Digite um valor válido para a meta');
+  const handleSaveGoals = () => {
+    const goalValue = parseFloat(monthlyGoal) || 0;
+    const incomeGoalValue = parseFloat(monthlyIncomeGoal) || 0;
+    
+    if (goalValue <= 0 || incomeGoalValue <= 0) {
+      toast.error('Por favor, insira valores válidos para as metas');
+      return;
     }
+    
+    localStorage.setItem(`monthly-goal-${accountType}`, goalValue.toString());
+    localStorage.setItem(`monthly-income-goal-${accountType}`, incomeGoalValue.toString());
+    
+    toast.success('Metas salvas com sucesso!');
   };
 
-  const getProgressColor = () => {
-    if (goalProgress >= 100) return 'bg-green-500';
-    if (goalProgress >= 50) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
+  // Cálculos de progresso
+  const currentGoal = parseFloat(monthlyGoal) || 0;
+  const currentIncomeGoal = parseFloat(monthlyIncomeGoal) || 0;
+  const expenseProgress = currentGoal > 0 ? Math.min((totalExpense / currentGoal) * 100, 100) : 0;
+  const incomeProgress = currentIncomeGoal > 0 ? Math.min((totalIncome / currentIncomeGoal) * 100, 100) : 0;
+  const balanceStatus = balance >= 0 ? 'positive' : 'negative';
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen min-h-[100dvh] bg-darker-blue overflow-x-hidden">
+        <Header title={`Planejamento ${accountType === 'personal' ? 'Pessoal' : 'Empresarial'}`} />
+        <main className="p-3 sm:p-4 md:p-6 safe-area-bottom">
+          <div className="max-w-4xl mx-auto space-y-4">
+            <Card className="bg-dark-blue border-gray-700">
+              <CardHeader>
+                <Skeleton className="h-6 w-48 bg-gray-700" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-10 w-full bg-gray-700" />
+                <Skeleton className="h-10 w-full bg-gray-700" />
+                <Skeleton className="h-10 w-32 bg-gray-700" />
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-darker-blue">
+    <div className="min-h-screen min-h-[100dvh] bg-darker-blue overflow-x-hidden">
       <Header title={`Planejamento ${accountType === 'personal' ? 'Pessoal' : 'Empresarial'}`} />
       
-      <main className="p-4 md:p-6">
+      <main className="p-3 sm:p-4 md:p-6 safe-area-bottom">
         <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
-          {/* Meta Mensal */}
-          <Card className="bg-dark-blue border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center text-lg md:text-xl">
-                <Target className="h-5 w-5 mr-2" />
-                Meta Mensal
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <Label htmlFor="goal" className="text-gray-300">Valor da Meta</Label>
-                  <Input
-                    id="goal"
-                    type="number"
-                    value={goalInput}
-                    onChange={(e) => setGoalInput(e.target.value)}
-                    placeholder="Digite sua meta mensal"
-                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 mt-1"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button
-                    onClick={handleSaveGoal}
-                    className="w-full md:w-auto bg-green-primary hover:bg-green-hover text-white"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Salvar Meta
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-300">Progresso da Meta</span>
-                  <span className="text-white">{goalProgress.toFixed(1)}%</span>
-                </div>
-                <Progress value={goalProgress} className={`h-3 ${getProgressColor()}`} />
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Atual: {formatCurrency(monthlyBalance)}</span>
-                  <span className="text-gray-400">Meta: {formatCurrency(monthlyGoal)}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Resumo do Mês */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+          
+          {/* Cards de Resumo Atual */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <Card className="bg-dark-blue border-gray-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-300">
-                  Receitas do Mês
-                </CardTitle>
-                <TrendingUp className="h-4 w-4 text-green-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl md:text-2xl font-bold text-green-400">
-                  {formatCurrency(monthlyIncome)}
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-xs sm:text-sm">Receitas do Mês</p>
+                    <p className="text-green-400 font-bold text-lg sm:text-xl">{formatCurrency(totalIncome)}</p>
+                  </div>
+                  <TrendingUp className="h-6 w-6 text-green-400 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-dark-blue border-gray-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-300">
-                  Despesas do Mês
-                </CardTitle>
-                <TrendingUp className="h-4 w-4 text-red-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl md:text-2xl font-bold text-red-400">
-                  {formatCurrency(monthlyExpense)}
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-xs sm:text-sm">Despesas do Mês</p>
+                    <p className="text-red-400 font-bold text-lg sm:text-xl">{formatCurrency(totalExpense)}</p>
+                  </div>
+                  <TrendingUp className="h-6 w-6 text-red-400 flex-shrink-0 rotate-180" />
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-dark-blue border-gray-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-300">
-                  Saldo do Mês
-                </CardTitle>
-                <Calendar className="h-4 w-4 text-blue-400" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-xl md:text-2xl font-bold ${monthlyBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {formatCurrency(monthlyBalance)}
+            <Card className="bg-dark-blue border-gray-700 sm:col-span-2 lg:col-span-1">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-xs sm:text-sm">Saldo Atual</p>
+                    <p className={`font-bold text-lg sm:text-xl ${balanceStatus === 'positive' ? 'text-green-400' : 'text-red-400'}`}>
+                      {formatCurrency(balance)}
+                    </p>
+                  </div>
+                  <Calendar className={`h-6 w-6 flex-shrink-0 ${balanceStatus === 'positive' ? 'text-green-400' : 'text-red-400'}`} />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Status da Meta */}
+          {/* Configuração de Metas */}
           <Card className="bg-dark-blue border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white text-lg md:text-xl">Status da Meta</CardTitle>
+              <CardTitle className="text-white flex items-center text-base sm:text-lg md:text-xl">
+                <Target className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />
+                Definir Metas Mensais
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-6">
-                {goalProgress >= 100 ? (
-                  <div className="text-green-400">
-                    <Target className="h-12 w-12 mx-auto mb-2" />
-                    <h3 className="text-xl font-bold mb-2">🎉 Parabéns!</h3>
-                    <p>Você atingiu sua meta mensal!</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <Label htmlFor="incomeGoal" className="text-gray-300 text-sm">Meta de Receita Mensal (R$)</Label>
+                  <Input
+                    id="incomeGoal"
+                    type="number"
+                    value={monthlyIncomeGoal}
+                    onChange={(e) => setMonthlyIncomeGoal(e.target.value)}
+                    placeholder="Ex: 5000"
+                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 mt-1 mobile-input"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="expenseGoal" className="text-gray-300 text-sm">Limite de Gastos Mensais (R$)</Label>
+                  <Input
+                    id="expenseGoal"
+                    type="number"
+                    value={monthlyGoal}
+                    onChange={(e) => setMonthlyGoal(e.target.value)}
+                    placeholder="Ex: 2000"
+                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 mt-1 mobile-input"
+                  />
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleSaveGoals}
+                className="w-full sm:w-auto bg-green-primary hover:bg-green-hover text-white mobile-button"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Salvar Metas
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Progresso das Metas */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+            {/* Progresso de Receitas */}
+            <Card className="bg-dark-blue border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-white text-base sm:text-lg">Progresso de Receitas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-300 text-sm">Meta: {formatCurrency(currentIncomeGoal)}</span>
+                    <span className="text-green-400 font-semibold text-sm">{incomeProgress.toFixed(1)}%</span>
                   </div>
-                ) : goalProgress >= 50 ? (
-                  <div className="text-yellow-400">
-                    <Target className="h-12 w-12 mx-auto mb-2" />
-                    <h3 className="text-xl font-bold mb-2">👍 Bem Encaminhado!</h3>
-                    <p>Você está na metade do caminho para sua meta.</p>
-                    <p className="text-sm mt-1">Faltam {formatCurrency(monthlyGoal - monthlyBalance)} para atingir sua meta.</p>
+                  <Progress value={incomeProgress} className="h-3" />
+                  <div className="flex justify-between text-xs sm:text-sm">
+                    <span className="text-gray-400">Atual: {formatCurrency(totalIncome)}</span>
+                    <span className="text-gray-400">
+                      Faltam: {formatCurrency(Math.max(0, currentIncomeGoal - totalIncome))}
+                    </span>
                   </div>
-                ) : (
-                  <div className="text-red-400">
-                    <Target className="h-12 w-12 mx-auto mb-2" />
-                    <h3 className="text-xl font-bold mb-2">💪 Continue Focado!</h3>
-                    <p>Você precisa aumentar suas receitas ou diminuir gastos.</p>
-                    <p className="text-sm mt-1">Faltam {formatCurrency(monthlyGoal - monthlyBalance)} para atingir sua meta.</p>
+                  {incomeProgress >= 100 && (
+                    <div className="flex items-center text-green-400 text-xs sm:text-sm">
+                      <Target className="h-4 w-4 mr-1" />
+                      Meta de receita atingida!
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Progresso de Gastos */}
+            <Card className="bg-dark-blue border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-white text-base sm:text-lg">Controle de Gastos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-300 text-sm">Limite: {formatCurrency(currentGoal)}</span>
+                    <span className={`font-semibold text-sm ${expenseProgress >= 90 ? 'text-red-400' : expenseProgress >= 70 ? 'text-yellow-400' : 'text-green-400'}`}>
+                      {expenseProgress.toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress 
+                    value={expenseProgress} 
+                    className={`h-3 ${expenseProgress >= 90 ? '[&>div]:bg-red-500' : expenseProgress >= 70 ? '[&>div]:bg-yellow-500' : '[&>div]:bg-green-500'}`} 
+                  />
+                  <div className="flex justify-between text-xs sm:text-sm">
+                    <span className="text-gray-400">Gasto: {formatCurrency(totalExpense)}</span>
+                    <span className="text-gray-400">
+                      Restante: {formatCurrency(Math.max(0, currentGoal - totalExpense))}
+                    </span>
+                  </div>
+                  {expenseProgress >= 90 && (
+                    <div className="flex items-center text-red-400 text-xs sm:text-sm">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      Atenção: Próximo do limite!
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Dicas e Insights */}
+          <Card className="bg-dark-blue border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-white text-base sm:text-lg">Insights do Mês</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3">
+                {balance > 0 && (
+                  <div className="flex items-start p-3 bg-green-900/20 border border-green-800 rounded-lg">
+                    <TrendingUp className="h-5 w-5 text-green-400 mr-3 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-green-400 font-medium text-sm">Parabéns!</p>
+                      <p className="text-gray-300 text-xs sm:text-sm">Você está com saldo positivo de {formatCurrency(balance)} este mês.</p>
+                    </div>
+                  </div>
+                )}
+                
+                {expenseProgress >= 80 && expenseProgress < 100 && (
+                  <div className="flex items-start p-3 bg-yellow-900/20 border border-yellow-800 rounded-lg">
+                    <AlertCircle className="h-5 w-5 text-yellow-400 mr-3 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-yellow-400 font-medium text-sm">Atenção</p>
+                      <p className="text-gray-300 text-xs sm:text-sm">Você já gastou {expenseProgress.toFixed(0)}% do seu limite mensal.</p>
+                    </div>
+                  </div>
+                )}
+
+                {incomeProgress < 50 && (
+                  <div className="flex items-start p-3 bg-blue-900/20 border border-blue-800 rounded-lg">
+                    <Target className="h-5 w-5 text-blue-400 mr-3 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-blue-400 font-medium text-sm">Dica</p>
+                      <p className="text-gray-300 text-xs sm:text-sm">Você ainda precisa de {formatCurrency(currentIncomeGoal - totalIncome)} para atingir sua meta de receita.</p>
+                    </div>
                   </div>
                 )}
               </div>
