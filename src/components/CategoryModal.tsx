@@ -4,9 +4,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { useCategories, Category } from '@/hooks/useCategories';
+import { useApp } from '@/contexts/AppContext';
 import { useToast } from '@/hooks/use-toast';
-import { X } from 'lucide-react';
+import { X, User, Building2 } from 'lucide-react';
 
 interface CategoryModalProps {
   isOpen: boolean;
@@ -23,6 +25,7 @@ export function CategoryModal({ isOpen, onClose, category }: CategoryModalProps)
   const [name, setName] = useState('');
   const [selectedColor, setSelectedColor] = useState('#10B981');
   const { addCategory, updateCategory, isAddingCategory, isUpdatingCategory } = useCategories();
+  const { accountType } = useApp();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -50,8 +53,10 @@ export function CategoryModal({ isOpen, onClose, category }: CategoryModalProps)
     const categoryData = {
       name: name.trim(),
       color: selectedColor,
-      type: 'personal' as const
+      type: accountType // Usar o accountType atual em vez de hardcoded 'personal'
     };
+
+    const profileText = accountType === 'personal' ? 'pessoal' : 'empresarial';
 
     if (category) {
       updateCategory({ id: category.id, ...categoryData });
@@ -61,20 +66,35 @@ export function CategoryModal({ isOpen, onClose, category }: CategoryModalProps)
 
     toast({
       title: category ? "Categoria atualizada" : "Categoria criada",
-      description: `${name} foi ${category ? 'atualizada' : 'criada'} com sucesso!`
+      description: `${name} foi ${category ? 'atualizada' : 'criada'} no perfil ${profileText}!`
     });
 
     onClose();
   };
 
   const isLoading = isAddingCategory || isUpdatingCategory;
+  const profileText = accountType === 'personal' ? 'Pessoal' : 'Empresarial';
+  const ProfileIcon = accountType === 'personal' ? User : Building2;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="bg-dark-blue border-gray-700">
         <DialogHeader>
           <DialogTitle className="text-white flex items-center justify-between">
-            {category ? 'Editar Categoria' : 'Nova Categoria'}
+            <div className="flex items-center gap-3">
+              {category ? 'Editar Categoria' : 'Nova Categoria'}
+              <Badge 
+                variant="outline" 
+                className={`${
+                  accountType === 'personal' 
+                    ? 'border-green-500 text-green-400' 
+                    : 'border-blue-500 text-blue-400'
+                } bg-transparent`}
+              >
+                <ProfileIcon className="h-3 w-3 mr-1" />
+                {profileText}
+              </Badge>
+            </div>
             <Button
               variant="ghost"
               size="sm"
@@ -87,6 +107,12 @@ export function CategoryModal({ isOpen, onClose, category }: CategoryModalProps)
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="bg-darker-blue p-3 rounded-lg border border-gray-600">
+            <p className="text-sm text-gray-300">
+              Esta categoria será criada no perfil <strong className={accountType === 'personal' ? 'text-green-400' : 'text-blue-400'}>{profileText}</strong>
+            </p>
+          </div>
+
           <div>
             <Label htmlFor="name" className="text-gray-300">
               Nome da Categoria
@@ -135,7 +161,11 @@ export function CategoryModal({ isOpen, onClose, category }: CategoryModalProps)
             </Button>
             <Button
               type="submit"
-              className="flex-1 bg-green-primary hover:bg-green-600 text-white"
+              className={`flex-1 text-white ${
+                accountType === 'personal' 
+                  ? 'bg-green-primary hover:bg-green-600' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
               disabled={isLoading || !name.trim()}
             >
               {isLoading ? 'Salvando...' : (category ? 'Atualizar' : 'Criar')}
