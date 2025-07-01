@@ -74,6 +74,7 @@ interface AppContextType {
   getTotalExpenses: () => number;
   getBalance: () => number;
   getCurrentMonthTransactions: () => Transaction[];
+  deleteTransaction: (transactionId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -108,6 +109,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const deleteTransaction = async (transactionId: string) => {
+    // Mock implementation - in real app this would call API
+    console.log('Deleting transaction:', transactionId);
+  };
+
   return (
     <AppContext.Provider value={{
       accountType,
@@ -118,7 +124,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       getTotalIncome,
       getTotalExpenses,
       getBalance,
-      getCurrentMonthTransactions
+      getCurrentMonthTransactions,
+      deleteTransaction
     }}>
       {children}
     </AppContext.Provider>

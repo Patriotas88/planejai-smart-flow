@@ -28,7 +28,8 @@ import {
   Filter,
   Download
 } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
+import { useTransactions } from '@/hooks/useTransactions';
+import { useCategories } from '@/hooks/useCategories';
 import { formatCurrency } from '@/lib/utils';
 import { TransactionModal } from '@/components/TransactionModal';
 
@@ -39,9 +40,10 @@ interface TransacoesProps {
 export default function Transacoes({ onMenuClick }: TransacoesProps) {
   const { 
     transactions, 
-    categories, 
-    deleteTransaction 
-  } = useApp();
+    deleteTransaction,
+    isLoading 
+  } = useTransactions();
+  const { categories } = useCategories();
 
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -55,7 +57,7 @@ export default function Transacoes({ onMenuClick }: TransacoesProps) {
     const matchesSearch = transaction.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          transaction.title?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === 'all' || transaction.type === typeFilter;
-    const matchesCategory = categoryFilter === 'all' || transaction.categoryId === categoryFilter;
+    const matchesCategory = categoryFilter === 'all' || transaction.category_id === categoryFilter;
     
     return matchesSearch && matchesType && matchesCategory;
   });
@@ -71,7 +73,7 @@ export default function Transacoes({ onMenuClick }: TransacoesProps) {
 
   const handleDelete = async (transactionId: string) => {
     if (window.confirm('Tem certeza que deseja excluir esta transação?')) {
-      await deleteTransaction(transactionId);
+      deleteTransaction(transactionId);
     }
   };
 
@@ -80,6 +82,17 @@ export default function Transacoes({ onMenuClick }: TransacoesProps) {
     setShowExpenseModal(false);
     setEditingTransaction(null);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-darker-blue">
+        <Header title="Transações" onMenuClick={onMenuClick} />
+        <main className="p-4 md:p-6">
+          <div className="text-center text-white">Carregando transações...</div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-darker-blue">
@@ -175,7 +188,7 @@ export default function Transacoes({ onMenuClick }: TransacoesProps) {
                 <TableBody>
                   {filteredTransactions.length > 0 ? (
                     filteredTransactions.map((transaction) => {
-                      const category = categories.find(c => c.id === transaction.categoryId);
+                      const category = categories.find(c => c.id === transaction.category_id);
                       return (
                         <TableRow key={transaction.id} className="border-gray-700 hover:bg-gray-800/50">
                           <TableCell className="text-gray-300">
@@ -183,9 +196,9 @@ export default function Transacoes({ onMenuClick }: TransacoesProps) {
                           </TableCell>
                           <TableCell className="text-white">
                             <div>
-                              <p className="font-medium">{transaction.description}</p>
-                              {transaction.title && (
-                                <p className="text-sm text-gray-400">{transaction.title}</p>
+                              <p className="font-medium">{transaction.title}</p>
+                              {transaction.description && (
+                                <p className="text-sm text-gray-400">{transaction.description}</p>
                               )}
                             </div>
                           </TableCell>
@@ -213,7 +226,7 @@ export default function Transacoes({ onMenuClick }: TransacoesProps) {
                             transaction.type === 'income' ? 'text-green-500' : 'text-red-500'
                           }`}>
                             {transaction.type === 'income' ? '+' : '-'}
-                            {formatCurrency(transaction.amount)}
+                            {formatCurrency(Number(transaction.amount))}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
