@@ -1,16 +1,19 @@
+
 import { Header } from '@/components/Header';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { Download, TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react';
-import { addDays, format } from 'date-fns';
+import { addDays, format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { useExportPDF } from '@/hooks/useExportPDF';
-import { useApp } from '@/contexts/AppContext';
+import { useTransactions } from '@/hooks/useTransactions';
+import { useCategories } from '@/hooks/useCategories';
+import { useFormatCurrency } from '@/hooks/useFormatCurrency';
 import { toast } from 'sonner';
 
 interface RelatoriosProps {
@@ -26,35 +29,107 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
   const [isExporting, setIsExporting] = useState(false);
 
   const { exportToPDF } = useExportPDF();
-  const { transactions, getTotalIncome, getTotalExpenses, getBalance } = useApp();
+  const { transactions, totalIncome, totalExpense, balance, isLoading } = useTransactions();
+  const { categories } = useCategories();
+  const { formatCurrency } = useFormatCurrency();
 
-  // Dados mockados para os gráficos
-  const monthlyData = [
-    { month: 'Jan', receitas: 4000, despesas: 2400 },
-    { month: 'Fev', receitas: 3000, despesas: 1398 },
-    { month: 'Mar', receitas: 2000, despesas: 9800 },
-    { month: 'Abr', receitas: 2780, despesas: 3908 },
-    { month: 'Mai', receitas: 1890, despesas: 4800 },
-    { month: 'Jun', receitas: 2390, despesas: 3800 },
-  ];
+  const filteredTransactions = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) return transactions;
+    
+    return transactions.filter(transaction => {
+      const transactionDate = parseISO(transaction.date);
+      return isWithinInterval(transactionDate, {
+        start: dateRange.from!,
+        end: dateRange.to!
+      });
+    });
+  }, [transactions, dateRange]);
 
-  const categoryData = [
-    { name: 'Alimentação', value: 400, color: '#0088FE' },
-    { name: 'Transporte', value: 300, color: '#00C49F' },
-    { name: 'Lazer', value: 300, color: '#FFBB28' },
-    { name: 'Saúde', value: 200, color: '#FF8042' },
-    { name: 'Outros', value: 150, color: '#8884D8' },
-  ];
+  const monthlyData = useMemo(() => {
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = subMonths(new Date(), i);
+      const monthStart = startOfMonth(date);
+      const monthEnd = endOfMonth(date);
+      
+      const monthTransactions = transactions.filter(t => {
+        const transactionDate = parseISO(t.date);
+        return isWithinInterval(transactionDate, { start: monthStart, end: monthEnd });
+      });
 
-  const trendData = [
-    { day: '1', valor: 1200 },
-    { day: '2', valor: 1900 },
-    { day: '3', valor: 800 },
-    { day: '4', valor: 1500 },
-    { day: '5', valor: 2000 },
-    { day: '6', valor: 1700 },
-    { day: '7', valor: 1400 },
-  ];
+      const receitas = monthTransactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+      
+      const despesas = monthTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+
+      months.push({
+        month: format(date, 'MMM', { locale: ptBR }),
+        receitas,
+        despesas
+      });
+    }
+    return months;
+  }, [transactions]);
+
+  const categoryData = useMemo(() => {
+    const categoryMap = new Map();
+    
+    filteredTransactions
+      .filter(t => t.type === 'expense' && t.category_id)
+      .forEach(transaction => {
+        const categoryId = transaction.category_id!;
+        const category = categories.find(c => c.id === categoryId);
+        const categoryName = category?.name || 'Outros';
+        const categoryColor = category?.color || '#6B7280';
+        
+        const current = categoryMap.get(categoryId) || { name: categoryName, value: 0, color: categoryColor };
+        current.value += Number(transaction.amount);
+        categoryMap.set(categoryId, current);
+      });
+
+    return Array.from(categoryMap.values()).slice(0, 5);
+  }, [filteredTransactions, categories]);
+
+  const trendData = useMemo(() => {
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = addDays(new Date(), -i);
+      const dayTransactions = filteredTransactions.filter(t => {
+        const transactionDate = parseISO(t.date);
+        return format(transactionDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+      });
+
+      const valor = dayTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+
+      last7Days.push({
+        day: format(date, 'dd'),
+        valor
+      });
+    }
+    return last7Days;
+  }, [filteredTransactions]);
+
+  const stats = useMemo(() => {
+    const filteredIncome = filteredTransactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    
+    const filteredExpense = filteredTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    return {
+      income: filteredIncome,
+      expense: filteredExpense,
+      balance: filteredIncome - filteredExpense,
+      transactionCount: filteredTransactions.length
+    };
+  }, [filteredTransactions]);
 
   const handlePeriodChange = (value: string) => {
     setSelectedPeriod(value);
@@ -68,11 +143,7 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
   const exportReport = async () => {
     setIsExporting(true);
     try {
-      const totalIncome = getTotalIncome();
-      const totalExpenses = getTotalExpenses();
-      const balance = getBalance();
-      
-      await exportToPDF(totalIncome, totalExpenses, balance, transactions);
+      await exportToPDF(stats.income, stats.expense, stats.balance, filteredTransactions);
       toast.success('Relatório exportado com sucesso!');
     } catch (error) {
       toast.error('Erro ao exportar relatório');
@@ -82,9 +153,22 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-darker-blue">
+        <Header title="Relatórios" onMenuClick={onMenuClick} showAccountToggle />
+        <main className="p-4 md:p-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-gray-400">Carregando relatórios...</div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-darker-blue">
-      <Header title="Relatórios" onMenuClick={onMenuClick} />
+      <Header title="Relatórios" onMenuClick={onMenuClick} showAccountToggle />
       
       <main className="p-4 md:p-6 space-y-6">
         {/* Filtros */}
@@ -146,13 +230,12 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-400">Total Receitas</p>
-                  <p className="text-2xl font-bold text-green-400">R$ 15.240</p>
+                  <p className="text-2xl font-bold text-green-400">{formatCurrency(stats.income)}</p>
                 </div>
                 <div className="h-12 w-12 bg-green-500/10 rounded-lg flex items-center justify-center">
                   <TrendingUp className="h-6 w-6 text-green-400" />
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">+12% em relação ao período anterior</p>
             </CardContent>
           </Card>
 
@@ -161,13 +244,12 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-400">Total Despesas</p>
-                  <p className="text-2xl font-bold text-red-400">R$ 8.750</p>
+                  <p className="text-2xl font-bold text-red-400">{formatCurrency(stats.expense)}</p>
                 </div>
                 <div className="h-12 w-12 bg-red-500/10 rounded-lg flex items-center justify-center">
                   <TrendingDown className="h-6 w-6 text-red-400" />
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">-5% em relação ao período anterior</p>
             </CardContent>
           </Card>
 
@@ -176,13 +258,14 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-400">Saldo</p>
-                  <p className="text-2xl font-bold text-blue-400">R$ 6.490</p>
+                  <p className={`text-2xl font-bold ${stats.balance >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
+                    {formatCurrency(stats.balance)}
+                  </p>
                 </div>
                 <div className="h-12 w-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
                   <DollarSign className="h-6 w-6 text-blue-400" />
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">+25% em relação ao período anterior</p>
             </CardContent>
           </Card>
 
@@ -191,13 +274,12 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-400">Transações</p>
-                  <p className="text-2xl font-bold text-white">142</p>
+                  <p className="text-2xl font-bold text-white">{stats.transactionCount}</p>
                 </div>
                 <div className="h-12 w-12 bg-purple-500/10 rounded-lg flex items-center justify-center">
                   <Calendar className="h-6 w-6 text-purple-400" />
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">+8 transações este mês</p>
             </CardContent>
           </Card>
         </div>
@@ -209,7 +291,7 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
             <CardHeader>
               <CardTitle className="text-white">Receitas vs Despesas</CardTitle>
               <CardDescription className="text-gray-400">
-                Comparativo mensal
+                Comparativo dos últimos 6 meses
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -224,9 +306,10 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
                       border: '1px solid #374151',
                       borderRadius: '8px'
                     }}
+                    formatter={(value: number) => [formatCurrency(value), '']}
                   />
-                  <Bar dataKey="receitas" fill="#10B981" />
-                  <Bar dataKey="despesas" fill="#EF4444" />
+                  <Bar dataKey="receitas" fill="#10B981" name="Receitas" />
+                  <Bar dataKey="despesas" fill="#EF4444" name="Despesas" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -237,7 +320,7 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
             <CardHeader>
               <CardTitle className="text-white">Despesas por Categoria</CardTitle>
               <CardDescription className="text-gray-400">
-                Distribuição das despesas
+                Distribuição no período selecionado
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -263,6 +346,7 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
                       border: '1px solid #374151',
                       borderRadius: '8px'
                     }}
+                    formatter={(value: number) => [formatCurrency(value), '']}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -290,6 +374,7 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
                     border: '1px solid #374151',
                     borderRadius: '8px'
                   }}
+                  formatter={(value: number) => [formatCurrency(value), 'Gastos']}
                 />
                 <Line 
                   type="monotone" 
@@ -306,9 +391,9 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
         {/* Tabela de Transações Recentes */}
         <Card className="bg-dark-blue border-gray-700">
           <CardHeader>
-            <CardTitle className="text-white">Transações Recentes</CardTitle>
+            <CardTitle className="text-white">Transações do Período</CardTitle>
             <CardDescription className="text-gray-400">
-              Últimas movimentações financeiras
+              Transações no período selecionado
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -323,30 +408,30 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-gray-800">
-                    <td className="py-3 px-4 text-gray-400">
-                      {format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}
-                    </td>
-                    <td className="py-3 px-4 text-white">Supermercado</td>
-                    <td className="py-3 px-4 text-gray-400">Alimentação</td>
-                    <td className="py-3 px-4 text-right text-red-400">-R$ 150,00</td>
-                  </tr>
-                  <tr className="border-b border-gray-800">
-                    <td className="py-3 px-4 text-gray-400">
-                      {format(addDays(new Date(), -1), 'dd/MM/yyyy', { locale: ptBR })}
-                    </td>
-                    <td className="py-3 px-4 text-white">Salário</td>
-                    <td className="py-3 px-4 text-gray-400">Receita</td>
-                    <td className="py-3 px-4 text-right text-green-400">+R$ 3.500,00</td>
-                  </tr>
-                  <tr className="border-b border-gray-800">
-                    <td className="py-3 px-4 text-gray-400">
-                      {format(addDays(new Date(), -2), 'dd/MM/yyyy', { locale: ptBR })}
-                    </td>
-                    <td className="py-3 px-4 text-white">Combustível</td>
-                    <td className="py-3 px-4 text-gray-400">Transporte</td>
-                    <td className="py-3 px-4 text-right text-red-400">-R$ 80,00</td>
-                  </tr>
+                  {filteredTransactions.slice(0, 10).map((transaction) => {
+                    const category = categories.find(c => c.id === transaction.category_id);
+                    return (
+                      <tr key={transaction.id} className="border-b border-gray-800">
+                        <td className="py-3 px-4 text-gray-400">
+                          {format(parseISO(transaction.date), 'dd/MM/yyyy', { locale: ptBR })}
+                        </td>
+                        <td className="py-3 px-4 text-white">{transaction.title}</td>
+                        <td className="py-3 px-4 text-gray-400">{category?.name || 'Sem categoria'}</td>
+                        <td className={`py-3 px-4 text-right ${
+                          transaction.type === 'income' ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filteredTransactions.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-gray-400">
+                        Nenhuma transação encontrada no período selecionado
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
