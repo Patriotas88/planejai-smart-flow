@@ -5,13 +5,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useBackButton } from '@/hooks/useBackButton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AccountTypeToggle } from '@/components/AccountTypeToggle';
 
 interface HeaderProps {
   title: string;
   onMenuClick?: () => void;
+  showAccountToggle?: boolean;
 }
 
-export function Header({ title, onMenuClick }: HeaderProps) {
+export function Header({ title, onMenuClick, showAccountToggle = false }: HeaderProps) {
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const { canGoBack, goBack } = useBackButton();
@@ -52,16 +54,21 @@ export function Header({ title, onMenuClick }: HeaderProps) {
           
           <h1 className="text-xl md:text-2xl font-bold text-white truncate">{title}</h1>
         </div>
-        
-        <Button
-          onClick={handleSignOut}
-          variant="outline"
-          size="sm"
-          className="border-gray-600 text-gray-300 hover:bg-gray-700 mobile-button"
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          <span className="hidden sm:inline">Sair</span>
-        </Button>
+
+        <div className="flex items-center gap-3">
+          {/* Toggle de Tipo de Conta */}
+          {showAccountToggle && <AccountTypeToggle />}
+          
+          <Button
+            onClick={handleSignOut}
+            variant="outline"
+            size="sm"
+            className="border-gray-600 text-gray-300 hover:bg-gray-700 mobile-button"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Sair</span>
+          </Button>
+        </div>
       </div>
     </header>
   );

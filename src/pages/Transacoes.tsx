@@ -26,10 +26,13 @@ import {
   Edit,
   Trash2,
   Filter,
-  Download
+  Download,
+  User,
+  Building2
 } from 'lucide-react';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useCategories } from '@/hooks/useCategories';
+import { useApp } from '@/contexts/AppContext';
 import { formatCurrency } from '@/lib/utils';
 import { TransactionModal } from '@/components/TransactionModal';
 
@@ -44,6 +47,7 @@ export default function Transacoes({ onMenuClick }: TransacoesProps) {
     isLoading 
   } = useTransactions();
   const { categories } = useCategories();
+  const { accountType } = useApp();
 
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -86,7 +90,7 @@ export default function Transacoes({ onMenuClick }: TransacoesProps) {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-darker-blue">
-        <Header title="Transações" onMenuClick={onMenuClick} />
+        <Header title="Transações" onMenuClick={onMenuClick} showAccountToggle />
         <main className="p-4 md:p-6">
           <div className="text-center text-white">Carregando transações...</div>
         </main>
@@ -96,9 +100,28 @@ export default function Transacoes({ onMenuClick }: TransacoesProps) {
 
   return (
     <div className="min-h-screen bg-darker-blue">
-      <Header title="Transações" onMenuClick={onMenuClick} />
+      <Header title="Transações" onMenuClick={onMenuClick} showAccountToggle />
       
       <main className="p-4 md:p-6 space-y-6">
+        {/* Indicador do Perfil Ativo */}
+        <div className="flex items-center gap-2">
+          {accountType === 'personal' ? (
+            <>
+              <User className="h-4 w-4 text-green-primary" />
+              <Badge className="bg-green-primary/20 text-green-primary border-green-primary/30">
+                Perfil Pessoal
+              </Badge>
+            </>
+          ) : (
+            <>
+              <Building2 className="h-4 w-4 text-blue-500" />
+              <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30">
+                Perfil Empresarial
+              </Badge>
+            </>
+          )}
+        </div>
+
         {/* Actions Bar */}
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
           <div className="flex flex-col sm:flex-row gap-4 flex-1">

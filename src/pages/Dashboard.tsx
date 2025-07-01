@@ -14,7 +14,9 @@ import {
   AlertCircle,
   Edit,
   ArrowRight,
-  Receipt
+  Receipt,
+  User,
+  Building2
 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { formatCurrency } from '@/lib/utils';
 import { TransactionModal } from '@/components/TransactionModal';
+import { AccountTypeToggle } from '@/components/AccountTypeToggle';
 
 interface DashboardProps {
   onMenuClick?: () => void;
@@ -31,6 +34,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { 
+    accountType,
     transactions, 
     categories, 
     budgets,
@@ -79,9 +83,25 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
 
   return (
     <div className="min-h-screen bg-darker-blue">
-      <Header title="Dashboard" onMenuClick={onMenuClick} />
+      <Header title="Dashboard" onMenuClick={onMenuClick} showAccountToggle />
       
       <main className="p-4 md:p-6 space-y-6">
+        {/* Indicador do Perfil Ativo */}
+        <Card className="bg-dark-blue border-gray-700">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              {accountType === 'personal' ? (
+                <User className="h-5 w-5 text-green-primary" />
+              ) : (
+                <Building2 className="h-5 w-5 text-green-primary" />
+              )}
+              <span className="text-white font-medium">
+                Perfil {accountType === 'personal' ? 'Pessoal' : 'Empresarial'} ativo
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Resumo Financeiro */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="bg-dark-blue border-gray-700">
