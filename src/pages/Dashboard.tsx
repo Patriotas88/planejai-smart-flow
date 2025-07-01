@@ -1,145 +1,175 @@
-
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
-import { FinanceCard } from '@/components/FinanceCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, Calendar, Plus, Edit3, BarChart3 } from 'lucide-react';
-import { useTransactions } from '@/hooks/useTransactions';
-import { useFormatCurrency } from '@/hooks/useFormatCurrency';
-import { TransactionModal } from '@/components/TransactionModal';
-import { AccountTypeToggle } from '@/components/AccountTypeToggle';
+import { Badge } from '@/components/ui/badge';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  DollarSign, 
+  CreditCard,
+  PlusCircle,
+  Calendar,
+  Target,
+  AlertCircle
+} from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
+import { formatCurrency } from '@/lib/utils';
 
-export default function Dashboard() {
-  const navigate = useNavigate();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'income' | 'expense'>('income');
-  const [editingTransaction, setEditingTransaction] = useState(null);
-  
+interface DashboardProps {
+  onMenuClick?: () => void;
+}
+
+export default function Dashboard({ onMenuClick }: DashboardProps) {
+  const { user } = useAuth();
   const { 
-    recentTransactions, 
-    totalIncome, 
-    totalExpense, 
-    balance, 
-    isLoading 
-  } = useTransactions();
-  
-  const { accountType } = useApp();
-  const { formatCurrency } = useFormatCurrency();
+    transactions, 
+    categories, 
+    budgets,
+    getTotalIncome,
+    getTotalExpenses,
+    getBalance,
+    getCurrentMonthTransactions 
+  } = useApp();
 
-  // Calcular meta mensal do localStorage
-  const monthlyGoal = parseFloat(localStorage.getItem(`monthly-goal-${accountType}`) || '2000');
+  const currentMonthTransactions = getCurrentMonthTransactions();
+  const totalIncome = getTotalIncome();
+  const totalExpenses = getTotalExpenses();
+  const balance = getBalance();
 
-  const handleOpenModal = (type: 'income' | 'expense') => {
-    setModalType(type);
-    setEditingTransaction(null);
-    setModalOpen(true);
-  };
+  const recentTransactions = transactions
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5);
 
-  const handleEditTransaction = (transaction: any) => {
-    setModalType(transaction.type);
-    setEditingTransaction(transaction);
-    setModalOpen(true);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen min-h-[100dvh] bg-darker-blue flex items-center justify-center">
-        <div className="text-white">Carregando...</div>
-      </div>
-    );
-  }
+  const upcomingBudgets = budgets
+    .filter(budget => {
+      const spent = transactions
+        .filter(t => t.categoryId === budget.categoryId && t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+      return spent / budget.amount > 0.8; // Orçamentos com mais de 80% gastos
+    })
+    .slice(0, 3);
 
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-darker-blue overflow-x-hidden">
-      <Header title={`Dashboard ${accountType === 'personal' ? 'Pessoal' : 'Empresarial'}`} />
+    <div className="min-h-screen bg-darker-blue">
+      <Header title="Dashboard" onMenuClick={onMenuClick} />
       
-      <main className="p-3 sm:p-4 md:p-6 safe-area-bottom">
-        {/* Toggle de Conta */}
-        <div className="mb-4 md:mb-6 flex justify-end">
-          <AccountTypeToggle />
-        </div>
-
-        {/* Cards de Resumo */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 md:mb-8">
-          <FinanceCard
-            title="Receitas"
-            value={formatCurrency(totalIncome)}
-            type="income"
-            icon={<ArrowUp className="h-3 w-3 sm:h-4 sm:w-4" />}
-          />
-          <FinanceCard
-            title="Despesas"
-            value={formatCurrency(totalExpense)}
-            type="expense"
-            icon={<ArrowDown className="h-3 w-3 sm:h-4 sm:w-4" />}
-          />
-          <FinanceCard
-            title="Saldo Atual"
-            value={formatCurrency(balance)}
-            type="balance"
-            icon={<Calendar className="h-3 w-3 sm:h-4 sm:w-4" />}
-          />
-          <FinanceCard
-            title="Meta Mensal"
-            value={formatCurrency(monthlyGoal)}
-            type="balance"
-            icon={<Calendar className="h-3 w-3 sm:h-4 sm:w-4" />}
-          />
-        </div>
-
-        {/* Seções Principais */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
-          {/* Últimas Transações */}
+      <main className="p-4 md:p-6 space-y-6">
+        {/* Resumo Financeiro */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="bg-dark-blue border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center justify-between text-base sm:text-lg">
-                Últimas Transações
-                <Button 
-                  size="sm" 
-                  onClick={() => handleOpenModal('income')}
-                  className="bg-green-primary hover:bg-green-hover mobile-button h-8 px-2 sm:px-3"
-                >
-                  <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  <span className="text-xs sm:text-sm">Adicionar</span>
-                </Button>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-300">
+                Receitas
               </CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="text-2xl font-bold text-green-500">
+                {formatCurrency(totalIncome)}
+              </div>
+              <p className="text-xs text-gray-400">
+                +12% em relação ao mês anterior
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-dark-blue border-gray-700">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-300">
+                Despesas
+              </CardTitle>
+              <TrendingDown className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-500">
+                {formatCurrency(totalExpenses)}
+              </div>
+              <p className="text-xs text-gray-400">
+                -5% em relação ao mês anterior
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-dark-blue border-gray-700">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-300">
+                Saldo
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${balance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {formatCurrency(balance)}
+              </div>
+              <p className="text-xs text-gray-400">
+                Saldo atual disponível
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Ações Rápidas */}
+        <Card className="bg-dark-blue border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-white">Ações Rápidas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Button className="bg-green-primary hover:bg-green-600 text-white">
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Nova Receita
+              </Button>
+              <Button variant="outline" className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white">
+                <CreditCard className="h-4 w-4 mr-2" />
+                Nova Despesa
+              </Button>
+              <Button variant="outline" className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white">
+                <Target className="h-4 w-4 mr-2" />
+                Definir Meta
+              </Button>
+              <Button variant="outline" className="border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white">
+                <Calendar className="h-4 w-4 mr-2" />
+                Ver Relatório
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Transações Recentes */}
+          <Card className="bg-dark-blue border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-white">Transações Recentes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
                 {recentTransactions.length > 0 ? (
-                  recentTransactions.map((transaction) => (
-                    <div key={transaction.id} className="flex items-center justify-between py-2 border-b border-gray-700 last:border-b-0">
-                      <div className="flex-1 min-w-0 pr-2">
-                        <p className="text-white font-medium truncate text-sm sm:text-base">{transaction.title}</p>
-                        <p className="text-gray-400 text-xs sm:text-sm">
-                          {new Date(transaction.date).toLocaleDateString('pt-BR')}
-                          {transaction.categories && (
-                            <span className="ml-2">• {transaction.categories.name}</span>
-                          )}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold text-xs sm:text-sm ${
-                          transaction.type === 'income' ? 'text-green-400' : 'text-red-400'
+                  recentTransactions.map((transaction) => {
+                    const category = categories.find(c => c.id === transaction.categoryId);
+                    return (
+                      <div key={transaction.id} className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-2 h-2 rounded-full ${
+                            transaction.type === 'income' ? 'bg-green-500' : 'bg-red-500'
+                          }`} />
+                          <div>
+                            <p className="text-white font-medium">{transaction.description}</p>
+                            <p className="text-gray-400 text-sm">
+                              {category?.name} • {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className={`font-bold ${
+                          transaction.type === 'income' ? 'text-green-500' : 'text-red-500'
                         }`}>
                           {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleEditTransaction(transaction)}
-                          className="h-6 w-6 sm:h-8 sm:w-8 p-0 text-gray-400 hover:text-white hover:bg-gray-700 flex-shrink-0"
-                        >
-                          <Edit3 className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
-                  <p className="text-gray-400 text-center py-4 text-sm">
+                  <p className="text-gray-400 text-center py-4">
                     Nenhuma transação encontrada
                   </p>
                 )}
@@ -147,58 +177,56 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Ações Rápidas */}
+          {/* Alertas de Orçamento */}
           <Card className="bg-dark-blue border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white text-base sm:text-lg">Ações Rápidas</CardTitle>
+              <CardTitle className="text-white flex items-center">
+                <AlertCircle className="h-5 w-5 mr-2 text-yellow-500" />
+                Alertas de Orçamento
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-3 md:gap-4">
-                <Button 
-                  onClick={() => handleOpenModal('income')}
-                  className="bg-green-primary hover:bg-green-hover text-white flex flex-col items-center p-3 sm:p-4 md:p-6 h-auto mobile-button"
-                >
-                  <Plus className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 mb-1 sm:mb-2" />
-                  <span className="text-xs sm:text-sm">Nova Receita</span>
-                </Button>
-                <Button 
-                  onClick={() => handleOpenModal('expense')}
-                  className="bg-red-600 hover:bg-red-700 text-white flex flex-col items-center p-3 sm:p-4 md:p-6 h-auto mobile-button"
-                >
-                  <ArrowDown className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 mb-1 sm:mb-2" />
-                  <span className="text-xs sm:text-sm">Nova Despesa</span>
-                </Button>
-                <Button 
-                  onClick={() => navigate('/planejamento')}
-                  variant="outline" 
-                  className="border-gray-600 text-gray-300 hover:bg-gray-700 flex flex-col items-center p-3 sm:p-4 md:p-6 h-auto mobile-button"
-                >
-                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 mb-1 sm:mb-2" />
-                  <span className="text-xs sm:text-sm">Planejamento</span>
-                </Button>
-                <Button 
-                  onClick={() => navigate('/relatorios')}
-                  variant="outline" 
-                  className="border-gray-600 text-gray-300 hover:bg-gray-700 flex flex-col items-center p-3 sm:p-4 md:p-6 h-auto mobile-button"
-                >
-                  <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 mb-1 sm:mb-2" />
-                  <span className="text-xs sm:text-sm">Relatórios</span>
-                </Button>
+              <div className="space-y-4">
+                {upcomingBudgets.length > 0 ? (
+                  upcomingBudgets.map((budget) => {
+                    const category = categories.find(c => c.id === budget.categoryId);
+                    const spent = transactions
+                      .filter(t => t.categoryId === budget.categoryId && t.type === 'expense')
+                      .reduce((sum, t) => sum + t.amount, 0);
+                    const percentage = (spent / budget.amount) * 100;
+                    
+                    return (
+                      <div key={budget.id} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-white font-medium">{category?.name}</span>
+                          <Badge variant={percentage > 90 ? "destructive" : "secondary"}>
+                            {percentage.toFixed(0)}%
+                          </Badge>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full ${
+                              percentage > 90 ? 'bg-red-500' : percentage > 80 ? 'bg-yellow-500' : 'bg-green-500'
+                            }`}
+                            style={{ width: `${Math.min(percentage, 100)}%` }}
+                          />
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                          {formatCurrency(spent)} de {formatCurrency(budget.amount)}
+                        </p>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-gray-400 text-center py-4">
+                    Todos os orçamentos estão dentro do limite
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
       </main>
-
-      <TransactionModal
-        open={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          setEditingTransaction(null);
-        }}
-        type={modalType}
-        transaction={editingTransaction}
-      />
     </div>
   );
 }

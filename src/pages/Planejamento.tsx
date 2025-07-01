@@ -1,289 +1,551 @@
-
-import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Target, TrendingUp, Calendar, Save, AlertCircle } from 'lucide-react';
-import { useTransactions } from '@/hooks/useTransactions';
-import { useFormatCurrency } from '@/hooks/useFormatCurrency';
-import { useApp } from '@/contexts/AppContext';
-import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Calendar, Target, TrendingUp, DollarSign, Plus, Edit, Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
-export default function Planejamento() {
-  const { accountType } = useApp();
-  const { totalIncome, totalExpense, balance, isLoading } = useTransactions();
-  const { formatCurrency } = useFormatCurrency();
-  const [monthlyGoal, setMonthlyGoal] = useState('');
-  const [monthlyIncomeGoal, setMonthlyIncomeGoal] = useState('');
+interface PlanejamentoProps {
+  onMenuClick?: () => void;
+}
 
-  // Debug logs
-  console.log('Planejamento data:', { totalIncome, totalExpense, balance, isLoading, accountType });
+interface Meta {
+  id: string;
+  titulo: string;
+  descricao: string;
+  valor: number;
+  valorAtual: number;
+  categoria: string;
+  prazo: string;
+  status: 'ativa' | 'concluida' | 'pausada';
+}
 
-  // Carregar metas salvas
-  useEffect(() => {
-    const savedGoal = localStorage.getItem(`monthly-goal-${accountType}`);
-    const savedIncomeGoal = localStorage.getItem(`monthly-income-goal-${accountType}`);
-    
-    console.log('Loading saved goals:', { savedGoal, savedIncomeGoal });
-    
-    if (savedGoal) {
-      setMonthlyGoal(savedGoal);
-    } else {
-      setMonthlyGoal('2000'); // Valor padrão
+interface Orcamento {
+  id: string;
+  categoria: string;
+  valorPlanejado: number;
+  valorGasto: number;
+  periodo: string;
+}
+
+export default function Planejamento({ onMenuClick }: PlanejamentoProps) {
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('metas');
+  
+  // Estados para Metas
+  const [metas, setMetas] = useState<Meta[]>([
+    {
+      id: '1',
+      titulo: 'Reserva de Emergência',
+      descricao: 'Juntar 6 meses de gastos para emergências',
+      valor: 30000,
+      valorAtual: 15000,
+      categoria: 'Reserva',
+      prazo: '2024-12-31',
+      status: 'ativa'
+    },
+    {
+      id: '2',
+      titulo: 'Viagem para Europa',
+      descricao: 'Economizar para viagem de férias',
+      valor: 15000,
+      valorAtual: 8500,
+      categoria: 'Lazer',
+      prazo: '2024-07-15',
+      status: 'ativa'
     }
-    
-    if (savedIncomeGoal) {
-      setMonthlyIncomeGoal(savedIncomeGoal);
-    } else {
-      setMonthlyIncomeGoal('5000'); // Valor padrão
-    }
-  }, [accountType]);
+  ]);
 
-  const handleSaveGoals = () => {
-    const goalValue = parseFloat(monthlyGoal) || 0;
-    const incomeGoalValue = parseFloat(monthlyIncomeGoal) || 0;
-    
-    if (goalValue <= 0 || incomeGoalValue <= 0) {
-      toast.error('Por favor, insira valores válidos para as metas');
+  // Estados para Orçamentos
+  const [orcamentos, setOrcamentos] = useState<Orcamento[]>([
+    {
+      id: '1',
+      categoria: 'Alimentação',
+      valorPlanejado: 1200,
+      valorGasto: 950,
+      periodo: 'Mensal'
+    },
+    {
+      id: '2',
+      categoria: 'Transporte',
+      valorPlanejado: 800,
+      valorGasto: 720,
+      periodo: 'Mensal'
+    },
+    {
+      id: '3',
+      categoria: 'Lazer',
+      valorPlanejado: 500,
+      valorGasto: 380,
+      periodo: 'Mensal'
+    }
+  ]);
+
+  // Estados para formulários
+  const [novaMeta, setNovaMeta] = useState({
+    titulo: '',
+    descricao: '',
+    valor: '',
+    categoria: '',
+    prazo: ''
+  });
+
+  const [novoOrcamento, setNovoOrcamento] = useState({
+    categoria: '',
+    valorPlanejado: '',
+    periodo: 'Mensal'
+  });
+
+  const [showFormMeta, setShowFormMeta] = useState(false);
+  const [showFormOrcamento, setShowFormOrcamento] = useState(false);
+
+  // Funções para Metas
+  const handleAddMeta = () => {
+    if (!novaMeta.titulo || !novaMeta.valor || !novaMeta.categoria || !novaMeta.prazo) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos obrigatórios",
+        variant: "destructive"
+      });
       return;
     }
+
+    const meta: Meta = {
+      id: Date.now().toString(),
+      titulo: novaMeta.titulo,
+      descricao: novaMeta.descricao,
+      valor: parseFloat(novaMeta.valor),
+      valorAtual: 0,
+      categoria: novaMeta.categoria,
+      prazo: novaMeta.prazo,
+      status: 'ativa'
+    };
+
+    setMetas([...metas, meta]);
+    setNovaMeta({ titulo: '', descricao: '', valor: '', categoria: '', prazo: '' });
+    setShowFormMeta(false);
     
-    localStorage.setItem(`monthly-goal-${accountType}`, goalValue.toString());
-    localStorage.setItem(`monthly-income-goal-${accountType}`, incomeGoalValue.toString());
-    
-    toast.success('Metas salvas com sucesso!');
+    toast({
+      title: "Meta criada!",
+      description: "Sua nova meta foi adicionada com sucesso."
+    });
   };
 
-  // Cálculos de progresso
-  const currentGoal = parseFloat(monthlyGoal) || 0;
-  const currentIncomeGoal = parseFloat(monthlyIncomeGoal) || 0;
-  const expenseProgress = currentGoal > 0 ? Math.min((totalExpense / currentGoal) * 100, 100) : 0;
-  const incomeProgress = currentIncomeGoal > 0 ? Math.min((totalIncome / currentIncomeGoal) * 100, 100) : 0;
-  const balanceStatus = balance >= 0 ? 'positive' : 'negative';
+  const handleDeleteMeta = (id: string) => {
+    setMetas(metas.filter(meta => meta.id !== id));
+    toast({
+      title: "Meta removida",
+      description: "A meta foi removida com sucesso."
+    });
+  };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen min-h-[100dvh] bg-darker-blue overflow-x-hidden">
-        <Header title={`Planejamento ${accountType === 'personal' ? 'Pessoal' : 'Empresarial'}`} />
-        <main className="p-3 sm:p-4 md:p-6 safe-area-bottom">
-          <div className="max-w-4xl mx-auto space-y-4">
-            <Card className="bg-dark-blue border-gray-700">
-              <CardHeader>
-                <Skeleton className="h-6 w-48 bg-gray-700" />
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Skeleton className="h-10 w-full bg-gray-700" />
-                <Skeleton className="h-10 w-full bg-gray-700" />
-                <Skeleton className="h-10 w-32 bg-gray-700" />
-              </CardContent>
-            </Card>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  // Funções para Orçamentos
+  const handleAddOrcamento = () => {
+    if (!novoOrcamento.categoria || !novoOrcamento.valorPlanejado) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos obrigatórios",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const orcamento: Orcamento = {
+      id: Date.now().toString(),
+      categoria: novoOrcamento.categoria,
+      valorPlanejado: parseFloat(novoOrcamento.valorPlanejado),
+      valorGasto: 0,
+      periodo: novoOrcamento.periodo
+    };
+
+    setOrcamentos([...orcamentos, orcamento]);
+    setNovoOrcamento({ categoria: '', valorPlanejado: '', periodo: 'Mensal' });
+    setShowFormOrcamento(false);
+    
+    toast({
+      title: "Orçamento criado!",
+      description: "Seu novo orçamento foi adicionado com sucesso."
+    });
+  };
+
+  const handleDeleteOrcamento = (id: string) => {
+    setOrcamentos(orcamentos.filter(orc => orc.id !== id));
+    toast({
+      title: "Orçamento removido",
+      description: "O orçamento foi removido com sucesso."
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ativa': return 'bg-green-500';
+      case 'concluida': return 'bg-blue-500';
+      case 'pausada': return 'bg-yellow-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const getProgressColor = (percentage: number) => {
+    if (percentage >= 90) return 'bg-red-500';
+    if (percentage >= 70) return 'bg-yellow-500';
+    return 'bg-green-500';
+  };
 
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-darker-blue overflow-x-hidden">
-      <Header title={`Planejamento ${accountType === 'personal' ? 'Pessoal' : 'Empresarial'}`} />
+    <div className="min-h-screen bg-darker-blue">
+      <Header title="Planejamento" onMenuClick={onMenuClick} />
       
-      <main className="p-3 sm:p-4 md:p-6 safe-area-bottom">
-        <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
-          
-          {/* Cards de Resumo Atual */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            <Card className="bg-dark-blue border-gray-700">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 text-xs sm:text-sm">Receitas do Mês</p>
-                    <p className="text-green-400 font-bold text-lg sm:text-xl">{formatCurrency(totalIncome)}</p>
-                  </div>
-                  <TrendingUp className="h-6 w-6 text-green-400 flex-shrink-0" />
-                </div>
-              </CardContent>
-            </Card>
+      <main className="p-4 md:p-6 space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 bg-dark-blue">
+            <TabsTrigger value="metas" className="data-[state=active]:bg-green-primary">
+              <Target className="w-4 h-4 mr-2" />
+              Metas
+            </TabsTrigger>
+            <TabsTrigger value="orcamentos" className="data-[state=active]:bg-green-primary">
+              <DollarSign className="w-4 h-4 mr-2" />
+              Orçamentos
+            </TabsTrigger>
+          </TabsList>
 
-            <Card className="bg-dark-blue border-gray-700">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 text-xs sm:text-sm">Despesas do Mês</p>
-                    <p className="text-red-400 font-bold text-lg sm:text-xl">{formatCurrency(totalExpense)}</p>
-                  </div>
-                  <TrendingUp className="h-6 w-6 text-red-400 flex-shrink-0 rotate-180" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-dark-blue border-gray-700 sm:col-span-2 lg:col-span-1">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 text-xs sm:text-sm">Saldo Atual</p>
-                    <p className={`font-bold text-lg sm:text-xl ${balanceStatus === 'positive' ? 'text-green-400' : 'text-red-400'}`}>
-                      {formatCurrency(balance)}
-                    </p>
-                  </div>
-                  <Calendar className={`h-6 w-6 flex-shrink-0 ${balanceStatus === 'positive' ? 'text-green-400' : 'text-red-400'}`} />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Configuração de Metas */}
-          <Card className="bg-dark-blue border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center text-base sm:text-lg md:text-xl">
-                <Target className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />
-                Definir Metas Mensais
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                <div>
-                  <Label htmlFor="incomeGoal" className="text-gray-300 text-sm">Meta de Receita Mensal (R$)</Label>
-                  <Input
-                    id="incomeGoal"
-                    type="number"
-                    value={monthlyIncomeGoal}
-                    onChange={(e) => setMonthlyIncomeGoal(e.target.value)}
-                    placeholder="Ex: 5000"
-                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 mt-1 mobile-input"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="expenseGoal" className="text-gray-300 text-sm">Limite de Gastos Mensais (R$)</Label>
-                  <Input
-                    id="expenseGoal"
-                    type="number"
-                    value={monthlyGoal}
-                    onChange={(e) => setMonthlyGoal(e.target.value)}
-                    placeholder="Ex: 2000"
-                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 mt-1 mobile-input"
-                  />
-                </div>
-              </div>
-
+          {/* Tab de Metas */}
+          <TabsContent value="metas" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-white">Minhas Metas</h2>
               <Button 
-                onClick={handleSaveGoals}
-                className="w-full sm:w-auto bg-green-primary hover:bg-green-hover text-white mobile-button"
+                onClick={() => setShowFormMeta(!showFormMeta)}
+                className="bg-green-primary hover:bg-green-600"
               >
-                <Save className="h-4 w-4 mr-2" />
-                Salvar Metas
+                <Plus className="w-4 h-4 mr-2" />
+                Nova Meta
               </Button>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Progresso das Metas */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-            {/* Progresso de Receitas */}
-            <Card className="bg-dark-blue border-gray-700">
-              <CardHeader>
-                <CardTitle className="text-white text-base sm:text-lg">Progresso de Receitas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300 text-sm">Meta: {formatCurrency(currentIncomeGoal)}</span>
-                    <span className="text-green-400 font-semibold text-sm">{incomeProgress.toFixed(1)}%</span>
-                  </div>
-                  <Progress value={incomeProgress} className="h-3" />
-                  <div className="flex justify-between text-xs sm:text-sm">
-                    <span className="text-gray-400">Atual: {formatCurrency(totalIncome)}</span>
-                    <span className="text-gray-400">
-                      Faltam: {formatCurrency(Math.max(0, currentIncomeGoal - totalIncome))}
-                    </span>
-                  </div>
-                  {incomeProgress >= 100 && (
-                    <div className="flex items-center text-green-400 text-xs sm:text-sm">
-                      <Target className="h-4 w-4 mr-1" />
-                      Meta de receita atingida!
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Progresso de Gastos */}
-            <Card className="bg-dark-blue border-gray-700">
-              <CardHeader>
-                <CardTitle className="text-white text-base sm:text-lg">Controle de Gastos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300 text-sm">Limite: {formatCurrency(currentGoal)}</span>
-                    <span className={`font-semibold text-sm ${expenseProgress >= 90 ? 'text-red-400' : expenseProgress >= 70 ? 'text-yellow-400' : 'text-green-400'}`}>
-                      {expenseProgress.toFixed(1)}%
-                    </span>
-                  </div>
-                  <Progress 
-                    value={expenseProgress} 
-                    className={`h-3 ${expenseProgress >= 90 ? '[&>div]:bg-red-500' : expenseProgress >= 70 ? '[&>div]:bg-yellow-500' : '[&>div]:bg-green-500'}`} 
-                  />
-                  <div className="flex justify-between text-xs sm:text-sm">
-                    <span className="text-gray-400">Gasto: {formatCurrency(totalExpense)}</span>
-                    <span className="text-gray-400">
-                      Restante: {formatCurrency(Math.max(0, currentGoal - totalExpense))}
-                    </span>
-                  </div>
-                  {expenseProgress >= 90 && (
-                    <div className="flex items-center text-red-400 text-xs sm:text-sm">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      Atenção: Próximo do limite!
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Dicas e Insights */}
-          <Card className="bg-dark-blue border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-white text-base sm:text-lg">Insights do Mês</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3">
-                {balance > 0 && (
-                  <div className="flex items-start p-3 bg-green-900/20 border border-green-800 rounded-lg">
-                    <TrendingUp className="h-5 w-5 text-green-400 mr-3 mt-0.5 flex-shrink-0" />
+            {/* Formulário Nova Meta */}
+            {showFormMeta && (
+              <Card className="bg-dark-blue border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white">Criar Nova Meta</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-green-400 font-medium text-sm">Parabéns!</p>
-                      <p className="text-gray-300 text-xs sm:text-sm">Você está com saldo positivo de {formatCurrency(balance)} este mês.</p>
+                      <Label htmlFor="titulo" className="text-gray-300">Título *</Label>
+                      <Input
+                        id="titulo"
+                        value={novaMeta.titulo}
+                        onChange={(e) => setNovaMeta({...novaMeta, titulo: e.target.value})}
+                        className="bg-darker-blue border-gray-600 text-white"
+                        placeholder="Ex: Reserva de emergência"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="valor" className="text-gray-300">Valor Meta (R$) *</Label>
+                      <Input
+                        id="valor"
+                        type="number"
+                        value={novaMeta.valor}
+                        onChange={(e) => setNovaMeta({...novaMeta, valor: e.target.value})}
+                        className="bg-darker-blue border-gray-600 text-white"
+                        placeholder="0,00"
+                      />
                     </div>
                   </div>
-                )}
+                  
+                  <div>
+                    <Label htmlFor="descricao" className="text-gray-300">Descrição</Label>
+                    <Textarea
+                      id="descricao"
+                      value={novaMeta.descricao}
+                      onChange={(e) => setNovaMeta({...novaMeta, descricao: e.target.value})}
+                      className="bg-darker-blue border-gray-600 text-white"
+                      placeholder="Descreva sua meta..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="categoria" className="text-gray-300">Categoria *</Label>
+                      <Select value={novaMeta.categoria} onValueChange={(value) => setNovaMeta({...novaMeta, categoria: value})}>
+                        <SelectTrigger className="bg-darker-blue border-gray-600 text-white">
+                          <SelectValue placeholder="Selecione uma categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Reserva">Reserva</SelectItem>
+                          <SelectItem value="Investimento">Investimento</SelectItem>
+                          <SelectItem value="Lazer">Lazer</SelectItem>
+                          <SelectItem value="Educação">Educação</SelectItem>
+                          <SelectItem value="Casa">Casa</SelectItem>
+                          <SelectItem value="Veículo">Veículo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="prazo" className="text-gray-300">Prazo *</Label>
+                      <Input
+                        id="prazo"
+                        type="date"
+                        value={novaMeta.prazo}
+                        onChange={(e) => setNovaMeta({...novaMeta, prazo: e.target.value})}
+                        className="bg-darker-blue border-gray-600 text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button onClick={handleAddMeta} className="bg-green-primary hover:bg-green-600">
+                      Criar Meta
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowFormMeta(false)}
+                      className="border-gray-600 text-gray-300"
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Lista de Metas */}
+            <div className="grid gap-4">
+              {metas.map((meta) => {
+                const progresso = (meta.valorAtual / meta.valor) * 100;
+                return (
+                  <Card key={meta.id} className="bg-dark-blue border-gray-700">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-white flex items-center gap-2">
+                            {meta.titulo}
+                            <Badge className={`${getStatusColor(meta.status)} text-white`}>
+                              {meta.status}
+                            </Badge>
+                          </CardTitle>
+                          <CardDescription className="text-gray-400">
+                            {meta.descricao}
+                          </CardDescription>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="text-red-400 hover:text-red-300"
+                            onClick={() => handleDeleteMeta(meta.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">Progresso</span>
+                          <span className="text-white">{progresso.toFixed(1)}%</span>
+                        </div>
+                        <Progress value={progresso} className="h-2" />
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-400 block">Valor Atual</span>
+                            <span className="text-green-400 font-semibold">
+                              R$ {meta.valorAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block">Meta</span>
+                            <span className="text-white font-semibold">
+                              R$ {meta.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block">Categoria</span>
+                            <span className="text-white">{meta.categoria}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block">Prazo</span>
+                            <span className="text-white">
+                              {new Date(meta.prazo).toLocaleDateString('pt-BR')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </TabsContent>
+
+          {/* Tab de Orçamentos */}
+          <TabsContent value="orcamentos" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-white">Meus Orçamentos</h2>
+              <Button 
+                onClick={() => setShowFormOrcamento(!showFormOrcamento)}
+                className="bg-green-primary hover:bg-green-600"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Novo Orçamento
+              </Button>
+            </div>
+
+            {/* Formulário Novo Orçamento */}
+            {showFormOrcamento && (
+              <Card className="bg-dark-blue border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white">Criar Novo Orçamento</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="categoria-orc" className="text-gray-300">Categoria *</Label>
+                      <Select value={novoOrcamento.categoria} onValueChange={(value) => setNovoOrcamento({...novoOrcamento, categoria: value})}>
+                        <SelectTrigger className="bg-darker-blue border-gray-600 text-white">
+                          <SelectValue placeholder="Selecione uma categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Alimentação">Alimentação</SelectItem>
+                          <SelectItem value="Transporte">Transporte</SelectItem>
+                          <SelectItem value="Lazer">Lazer</SelectItem>
+                          <SelectItem value="Saúde">Saúde</SelectItem>
+                          <SelectItem value="Educação">Educação</SelectItem>
+                          <SelectItem value="Casa">Casa</SelectItem>
+                          <SelectItem value="Roupas">Roupas</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="valor-planejado" className="text-gray-300">Valor Planejado (R$) *</Label>
+                      <Input
+                        id="valor-planejado"
+                        type="number"
+                        value={novoOrcamento.valorPlanejado}
+                        onChange={(e) => setNovoOrcamento({...novoOrcamento, valorPlanejado: e.target.value})}
+                        className="bg-darker-blue border-gray-600 text-white"
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="periodo" className="text-gray-300">Período</Label>
+                      <Select value={novoOrcamento.periodo} onValueChange={(value) => setNovoOrcamento({...novoOrcamento, periodo: value})}>
+                        <SelectTrigger className="bg-darker-blue border-gray-600 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Semanal">Semanal</SelectItem>
+                          <SelectItem value="Mensal">Mensal</SelectItem>
+                          <SelectItem value="Trimestral">Trimestral</SelectItem>
+                          <SelectItem value="Anual">Anual</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button onClick={handleAddOrcamento} className="bg-green-primary hover:bg-green-600">
+                      Criar Orçamento
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowFormOrcamento(false)}
+                      className="border-gray-600 text-gray-300"
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Lista de Orçamentos */}
+            <div className="grid gap-4">
+              {orcamentos.map((orcamento) => {
+                const percentualGasto = (orcamento.valorGasto / orcamento.valorPlanejado) * 100;
+                const restante = orcamento.valorPlanejado - orcamento.valorGasto;
                 
-                {expenseProgress >= 80 && expenseProgress < 100 && (
-                  <div className="flex items-start p-3 bg-yellow-900/20 border border-yellow-800 rounded-lg">
-                    <AlertCircle className="h-5 w-5 text-yellow-400 mr-3 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-yellow-400 font-medium text-sm">Atenção</p>
-                      <p className="text-gray-300 text-xs sm:text-sm">Você já gastou {expenseProgress.toFixed(0)}% do seu limite mensal.</p>
-                    </div>
-                  </div>
-                )}
-
-                {incomeProgress < 50 && (
-                  <div className="flex items-start p-3 bg-blue-900/20 border border-blue-800 rounded-lg">
-                    <Target className="h-5 w-5 text-blue-400 mr-3 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-blue-400 font-medium text-sm">Dica</p>
-                      <p className="text-gray-300 text-xs sm:text-sm">Você ainda precisa de {formatCurrency(currentIncomeGoal - totalIncome)} para atingir sua meta de receita.</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                return (
+                  <Card key={orcamento.id} className="bg-dark-blue border-gray-700">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-white">{orcamento.categoria}</CardTitle>
+                          <CardDescription className="text-gray-400">
+                            Período: {orcamento.periodo}
+                          </CardDescription>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="text-red-400 hover:text-red-300"
+                            onClick={() => handleDeleteOrcamento(orcamento.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">Utilizado</span>
+                          <span className="text-white">{percentualGasto.toFixed(1)}%</span>
+                        </div>
+                        <Progress 
+                          value={percentualGasto} 
+                          className={`h-2 ${getProgressColor(percentualGasto)}`}
+                        />
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-400 block">Planejado</span>
+                            <span className="text-white font-semibold">
+                              R$ {orcamento.valorPlanejado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block">Gasto</span>
+                            <span className="text-red-400 font-semibold">
+                              R$ {orcamento.valorGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block">Restante</span>
+                            <span className={`font-semibold ${restante >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              R$ {Math.abs(restante).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block">Status</span>
+                            <Badge className={`${percentualGasto > 100 ? 'bg-red-500' : percentualGasto > 80 ? 'bg-yellow-500' : 'bg-green-500'} text-white`}>
+                              {percentualGasto > 100 ? 'Excedido' : percentualGasto > 80 ? 'Atenção' : 'Normal'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

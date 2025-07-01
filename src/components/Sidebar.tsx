@@ -43,7 +43,11 @@ const menuItems = [
   }
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  onNavigate?: () => void;
+}
+
+export function Sidebar({ onNavigate }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
   const { signOut } = useAuth();
@@ -54,12 +58,19 @@ export function Sidebar() {
     navigate('/login');
   };
 
+  const handleNavClick = () => {
+    // Fecha a sidebar mobile quando navegar
+    if (onNavigate) {
+      onNavigate();
+    }
+  };
+
   return (
     <div className={`bg-dark-blue border-r border-gray-700 transition-all duration-300 ${
       isCollapsed ? 'w-16' : 'w-64'
     } min-h-screen flex flex-col`}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-700">
+      <div className="p-4 border-b border-gray-700 safe-area-top">
         <div className="flex items-center justify-between">
           {!isCollapsed && (
             <h2 className="text-xl font-bold text-white">Planejai</h2>
@@ -84,7 +95,8 @@ export function Sidebar() {
               <li key={item.path}>
                 <NavLink
                   to={item.path}
-                  className={`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
+                  onClick={handleNavClick}
+                  className={`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 mobile-button ${
                     isActive 
                       ? 'bg-green-primary text-white' 
                       : 'text-gray-300 hover:bg-gray-700 hover:text-white'
@@ -102,10 +114,10 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-700">
+      <div className="p-4 border-t border-gray-700 safe-area-bottom">
         <Button
           variant="ghost"
-          className="w-full flex items-center justify-start text-gray-300 hover:text-white hover:bg-gray-700"
+          className="w-full flex items-center justify-start text-gray-300 hover:text-white hover:bg-gray-700 mobile-button"
           onClick={handleSignOut}
         >
           <LogOut className="h-5 w-5 flex-shrink-0" />
