@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,12 +17,12 @@ export default function Perfil() {
   const [email, setEmail] = useState('');
 
   // Inicializar campos quando o perfil carregar
-  useState(() => {
+  useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || '');
       setEmail(profile.email || '');
     }
-  });
+  }, [profile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +55,7 @@ export default function Perfil() {
     return (
       <div className="min-h-screen bg-darker-blue">
         <Header title="Meu Perfil" />
-        <main className="p-6">
+        <main className="p-4 md:p-6">
           <div className="text-white text-center">Carregando perfil...</div>
         </main>
       </div>
@@ -66,12 +66,12 @@ export default function Perfil() {
     <div className="min-h-screen bg-darker-blue">
       <Header title="Meu Perfil" />
       
-      <main className="p-6">
-        <div className="max-w-2xl mx-auto space-y-6">
+      <main className="p-4 md:p-6">
+        <div className="max-w-2xl mx-auto space-y-4 md:space-y-6">
           {/* Informações do Perfil */}
           <Card className="bg-dark-blue border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white flex items-center">
+              <CardTitle className="text-white flex items-center text-lg md:text-xl">
                 <User className="h-5 w-5 mr-2" />
                 Informações Pessoais
               </CardTitle>
@@ -85,7 +85,7 @@ export default function Perfil() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Digite seu nome completo"
-                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 mt-1"
                   />
                 </div>
 
@@ -97,14 +97,14 @@ export default function Perfil() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Digite seu email"
-                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 mt-1"
                   />
                 </div>
 
                 <Button
                   type="submit"
                   disabled={isUpdatingProfile}
-                  className="bg-green-primary hover:bg-green-hover text-white"
+                  className="w-full md:w-auto bg-green-primary hover:bg-green-hover text-white"
                 >
                   <Save className="h-4 w-4 mr-2" />
                   {isUpdatingProfile ? 'Salvando...' : 'Salvar Alterações'}
@@ -116,7 +116,7 @@ export default function Perfil() {
           {/* Informações da Conta */}
           <Card className="bg-dark-blue border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white flex items-center">
+              <CardTitle className="text-white flex items-center text-lg md:text-xl">
                 <Mail className="h-5 w-5 mr-2" />
                 Informações da Conta
               </CardTitle>
@@ -124,14 +124,14 @@ export default function Perfil() {
             <CardContent className="space-y-4">
               <div>
                 <Label className="text-gray-300">Email de Login</Label>
-                <div className="text-white bg-gray-800 p-3 rounded border border-gray-600">
+                <div className="text-white bg-gray-800 p-3 rounded border border-gray-600 mt-1 break-all">
                   {user?.email}
                 </div>
               </div>
               
               <div>
                 <Label className="text-gray-300">Data de Cadastro</Label>
-                <div className="text-white bg-gray-800 p-3 rounded border border-gray-600">
+                <div className="text-white bg-gray-800 p-3 rounded border border-gray-600 mt-1">
                   {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('pt-BR') : 'N/A'}
                 </div>
               </div>
@@ -141,13 +141,13 @@ export default function Perfil() {
           {/* Ações da Conta */}
           <Card className="bg-dark-blue border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white">Ações da Conta</CardTitle>
+              <CardTitle className="text-white text-lg md:text-xl">Ações da Conta</CardTitle>
             </CardHeader>
             <CardContent>
               <Button
                 onClick={handleSignOut}
                 variant="destructive"
-                className="bg-red-600 hover:bg-red-700"
+                className="w-full md:w-auto bg-red-600 hover:bg-red-700"
               >
                 Sair da Conta
               </Button>

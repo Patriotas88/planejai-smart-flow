@@ -16,7 +16,7 @@ interface TransactionModalProps {
   open: boolean;
   onClose: () => void;
   type: 'income' | 'expense';
-  transaction?: Transaction; // Para edição
+  transaction?: Transaction;
 }
 
 export function TransactionModal({ open, onClose, type, transaction }: TransactionModalProps) {
@@ -109,9 +109,9 @@ export function TransactionModal({ open, onClose, type, transaction }: Transacti
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-dark-blue border-gray-700 text-white">
+      <DialogContent className="bg-dark-blue border-gray-700 text-white max-w-md mx-4 sm:mx-auto">
         <DialogHeader>
-          <DialogTitle className="text-white">
+          <DialogTitle className="text-white text-lg md:text-xl">
             {isEditing ? 'Editar' : 'Nova'} {type === 'income' ? 'Receita' : 'Despesa'}
           </DialogTitle>
         </DialogHeader>
@@ -124,7 +124,7 @@ export function TransactionModal({ open, onClose, type, transaction }: Transacti
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Digite o título"
-              className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+              className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 mt-1"
               required
             />
           </div>
@@ -136,7 +136,7 @@ export function TransactionModal({ open, onClose, type, transaction }: Transacti
               value={displayValue}
               onChange={(e) => handleChange(e.target.value)}
               placeholder="R$ 0,00"
-              className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+              className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 mt-1"
               required
             />
           </div>
@@ -144,7 +144,7 @@ export function TransactionModal({ open, onClose, type, transaction }: Transacti
           <div>
             <Label htmlFor="category" className="text-gray-300">Categoria</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+              <SelectTrigger className="bg-gray-800 border-gray-600 text-white mt-1">
                 <SelectValue placeholder="Selecione uma categoria" />
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border-gray-600">
@@ -170,7 +170,7 @@ export function TransactionModal({ open, onClose, type, transaction }: Transacti
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="bg-gray-800 border-gray-600 text-white"
+              className="bg-gray-800 border-gray-600 text-white mt-1"
             />
           </div>
 
@@ -181,19 +181,19 @@ export function TransactionModal({ open, onClose, type, transaction }: Transacti
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Descrição opcional"
-              className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+              className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 mt-1"
               rows={3}
             />
           </div>
 
-          <div className="flex gap-2 pt-4">
+          <div className="flex flex-col sm:flex-row gap-2 pt-4">
             {isEditing && (
               <Button
                 type="button"
                 variant="destructive"
                 onClick={handleDelete}
                 disabled={isLoading}
-                className="bg-red-600 hover:bg-red-700"
+                className="bg-red-600 hover:bg-red-700 order-3 sm:order-1"
               >
                 {isDeletingTransaction ? 'Excluindo...' : 'Excluir'}
               </Button>
@@ -203,7 +203,7 @@ export function TransactionModal({ open, onClose, type, transaction }: Transacti
               type="button"
               variant="outline"
               onClick={onClose}
-              className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700"
+              className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700 order-1 sm:order-2"
             >
               Cancelar
             </Button>
@@ -211,7 +211,7 @@ export function TransactionModal({ open, onClose, type, transaction }: Transacti
             <Button
               type="submit"
               disabled={isLoading}
-              className={`flex-1 ${
+              className={`flex-1 order-2 sm:order-3 ${
                 type === 'income' 
                   ? 'bg-green-primary hover:bg-green-hover' 
                   : 'bg-red-600 hover:bg-red-700'

@@ -1,10 +1,11 @@
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { FinanceCard } from '@/components/FinanceCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, Calendar, Plus, Edit3 } from 'lucide-react';
+import { ArrowUp, ArrowDown, Calendar, Plus, Edit3, BarChart3 } from 'lucide-react';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useFormatCurrency } from '@/hooks/useFormatCurrency';
 import { TransactionModal } from '@/components/TransactionModal';
@@ -12,6 +13,7 @@ import { AccountTypeToggle } from '@/components/AccountTypeToggle';
 import { useApp } from '@/contexts/AppContext';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'income' | 'expense'>('income');
   const [editingTransaction, setEditingTransaction] = useState(null);
@@ -26,6 +28,9 @@ export default function Dashboard() {
   
   const { accountType } = useApp();
   const { formatCurrency } = useFormatCurrency();
+
+  // Calcular meta mensal do localStorage
+  const monthlyGoal = parseFloat(localStorage.getItem(`monthly-goal-${accountType}`) || '2000');
 
   const handleOpenModal = (type: 'income' | 'expense') => {
     setModalType(type);
@@ -51,14 +56,14 @@ export default function Dashboard() {
     <div className="min-h-screen bg-darker-blue">
       <Header title={`Dashboard ${accountType === 'personal' ? 'Pessoal' : 'Empresarial'}`} />
       
-      <main className="p-6">
+      <main className="p-4 md:p-6">
         {/* Toggle de Conta */}
-        <div className="mb-6 flex justify-end">
+        <div className="mb-4 md:mb-6 flex justify-end">
           <AccountTypeToggle />
         </div>
 
         {/* Cards de Resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
           <FinanceCard
             title="Receitas"
             value={formatCurrency(totalIncome)}
@@ -79,36 +84,36 @@ export default function Dashboard() {
           />
           <FinanceCard
             title="Meta Mensal"
-            value="R$ 2.000,00"
+            value={formatCurrency(monthlyGoal)}
             type="balance"
             icon={<Calendar className="h-4 w-4" />}
           />
         </div>
 
         {/* Seções Principais */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
           {/* Últimas Transações */}
           <Card className="bg-dark-blue border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white flex items-center justify-between">
+              <CardTitle className="text-white flex items-center justify-between text-lg">
                 Últimas Transações
                 <Button 
                   size="sm" 
                   onClick={() => handleOpenModal('income')}
                   className="bg-green-primary hover:bg-green-hover"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar
+                  <Plus className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Adicionar</span>
                 </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {recentTransactions.length > 0 ? (
-                  recentTransactions.map((transaction, index) => (
+                  recentTransactions.map((transaction) => (
                     <div key={transaction.id} className="flex items-center justify-between py-2 border-b border-gray-700 last:border-b-0">
-                      <div className="flex-1">
-                        <p className="text-white font-medium">{transaction.title}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-medium truncate">{transaction.title}</p>
                         <p className="text-gray-400 text-sm">
                           {new Date(transaction.date).toLocaleDateString('pt-BR')}
                           {transaction.categories && (
@@ -116,22 +121,20 @@ export default function Dashboard() {
                           )}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold ${
+                      <div className="flex items-center gap-2 ml-2">
+                        <span className={`font-bold text-sm md:text-base ${
                           transaction.type === 'income' ? 'text-green-400' : 'text-red-400'
                         }`}>
                           {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                         </span>
-                        {index === 0 && ( // Só mostra edit na primeira (mais recente)
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleEditTransaction(transaction)}
-                            className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-gray-700"
-                          >
-                            <Edit3 className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEditTransaction(transaction)}
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-gray-700 flex-shrink-0"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   ))
@@ -147,31 +150,39 @@ export default function Dashboard() {
           {/* Ações Rápidas */}
           <Card className="bg-dark-blue border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white">Ações Rápidas</CardTitle>
+              <CardTitle className="text-white text-lg">Ações Rápidas</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 md:gap-4">
                 <Button 
                   onClick={() => handleOpenModal('income')}
-                  className="bg-green-primary hover:bg-green-hover text-white flex flex-col items-center p-6 h-auto"
+                  className="bg-green-primary hover:bg-green-hover text-white flex flex-col items-center p-4 md:p-6 h-auto"
                 >
-                  <Plus className="h-6 w-6 mb-2" />
-                  <span className="text-sm">Nova Receita</span>
+                  <Plus className="h-5 w-5 md:h-6 md:w-6 mb-2" />
+                  <span className="text-xs md:text-sm">Nova Receita</span>
                 </Button>
                 <Button 
                   onClick={() => handleOpenModal('expense')}
-                  className="bg-red-600 hover:bg-red-700 text-white flex flex-col items-center p-6 h-auto"
+                  className="bg-red-600 hover:bg-red-700 text-white flex flex-col items-center p-4 md:p-6 h-auto"
                 >
-                  <ArrowDown className="h-6 w-6 mb-2" />
-                  <span className="text-sm">Nova Despesa</span>
+                  <ArrowDown className="h-5 w-5 md:h-6 md:w-6 mb-2" />
+                  <span className="text-xs md:text-sm">Nova Despesa</span>
                 </Button>
-                <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700 flex flex-col items-center p-6 h-auto">
-                  <Calendar className="h-6 w-6 mb-2" />
-                  <span className="text-sm">Planejamento</span>
+                <Button 
+                  onClick={() => navigate('/planejamento')}
+                  variant="outline" 
+                  className="border-gray-600 text-gray-300 hover:bg-gray-700 flex flex-col items-center p-4 md:p-6 h-auto"
+                >
+                  <Calendar className="h-5 w-5 md:h-6 md:w-6 mb-2" />
+                  <span className="text-xs md:text-sm">Planejamento</span>
                 </Button>
-                <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700 flex flex-col items-center p-6 h-auto">
-                  <ArrowUp className="h-6 w-6 mb-2" />
-                  <span className="text-sm">Relatórios</span>
+                <Button 
+                  onClick={() => navigate('/relatorios')}
+                  variant="outline" 
+                  className="border-gray-600 text-gray-300 hover:bg-gray-700 flex flex-col items-center p-4 md:p-6 h-auto"
+                >
+                  <BarChart3 className="h-5 w-5 md:h-6 md:w-6 mb-2" />
+                  <span className="text-xs md:text-sm">Relatórios</span>
                 </Button>
               </div>
             </CardContent>

@@ -7,14 +7,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BarChart, BarChart3, Download, Calendar, PieChart, TrendingUp, TrendingDown } from 'lucide-react';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useFormatCurrency } from '@/hooks/useFormatCurrency';
+import { useExportPDF } from '@/hooks/useExportPDF';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Bar, BarChart as RechartsBarChart, PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { useApp } from '@/contexts/AppContext';
+import { toast } from 'sonner';
 
 export default function Relatorios() {
   const [period, setPeriod] = useState('month');
+  const [isExporting, setIsExporting] = useState(false);
+  
   const { transactions, isLoading } = useTransactions();
   const { formatCurrency } = useFormatCurrency();
+  const { exportToPDF } = useExportPDF();
   const { accountType } = useApp();
 
   // Dados para gráfico de receitas vs despesas por mês
@@ -75,6 +80,29 @@ export default function Relatorios() {
     },
   };
 
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      const totalIncome = transactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+
+      const totalExpense = transactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+
+      const balance = totalIncome - totalExpense;
+
+      await exportToPDF(totalIncome, totalExpense, balance, transactions);
+      toast.success('PDF exportado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao exportar PDF');
+      console.error('Error exporting PDF:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-darker-blue flex items-center justify-center">
@@ -97,12 +125,12 @@ export default function Relatorios() {
     <div className="min-h-screen bg-darker-blue">
       <Header title={`Relatórios ${accountType === 'personal' ? 'Pessoal' : 'Empresarial'}`} />
       
-      <main className="p-6">
+      <main className="p-4 md:p-6">
         {/* Filtros */}
-        <div className="mb-6 flex justify-between items-center">
-          <div className="flex gap-4">
+        <div className="mb-4 md:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="w-full sm:w-auto">
             <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger className="w-48 bg-dark-blue border-gray-600 text-white">
+              <SelectTrigger className="w-full sm:w-48 bg-dark-blue border-gray-600 text-white">
                 <SelectValue placeholder="Selecione o período" />
               </SelectTrigger>
               <SelectContent className="bg-dark-blue border-gray-600">
@@ -114,14 +142,18 @@ export default function Relatorios() {
             </Select>
           </div>
           
-          <Button className="bg-green-primary hover:bg-green-hover">
+          <Button 
+            onClick={handleExportPDF}
+            disabled={isExporting}
+            className="w-full sm:w-auto bg-green-primary hover:bg-green-hover"
+          >
             <Download className="h-4 w-4 mr-2" />
-            Exportar PDF
+            {isExporting ? 'Exportando...' : 'Exportar PDF'}
           </Button>
         </div>
 
         {/* Cards de Resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
           <Card className="bg-dark-blue border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-300">
@@ -130,7 +162,7 @@ export default function Relatorios() {
               <TrendingUp className="h-4 w-4 text-green-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-400">
+              <div className="text-xl md:text-2xl font-bold text-green-400">
                 {formatCurrency(totalIncome)}
               </div>
             </CardContent>
@@ -144,7 +176,7 @@ export default function Relatorios() {
               <TrendingDown className="h-4 w-4 text-red-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-400">
+              <div className="text-xl md:text-2xl font-bold text-red-400">
                 {formatCurrency(totalExpense)}
               </div>
             </CardContent>
@@ -158,7 +190,7 @@ export default function Relatorios() {
               <Calendar className="h-4 w-4 text-blue-400" />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <div className={`text-xl md:text-2xl font-bold ${balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {formatCurrency(balance)}
               </div>
             </CardContent>
@@ -166,18 +198,18 @@ export default function Relatorios() {
         </div>
 
         {/* Gráficos */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
           {/* Gráfico de Receitas vs Despesas */}
           <Card className="bg-dark-blue border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white flex items-center">
+              <CardTitle className="text-white flex items-center text-lg md:text-xl">
                 <BarChart3 className="h-5 w-5 mr-2" />
                 Receitas vs Despesas
               </CardTitle>
             </CardHeader>
             <CardContent>
               {chartData.length > 0 ? (
-                <ChartContainer config={chartConfig} className="min-h-[300px]">
+                <ChartContainer config={chartConfig} className="min-h-[250px] md:min-h-[300px]">
                   <RechartsBarChart data={chartData}>
                     <XAxis 
                       dataKey="month" 
@@ -205,14 +237,14 @@ export default function Relatorios() {
           {/* Gráfico de Categorias */}
           <Card className="bg-dark-blue border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white flex items-center">
+              <CardTitle className="text-white flex items-center text-lg md:text-xl">
                 <PieChart className="h-5 w-5 mr-2" />
                 Gastos por Categoria
               </CardTitle>
             </CardHeader>
             <CardContent>
               {pieData.length > 0 ? (
-                <div className="min-h-[300px]">
+                <div className="min-h-[250px] md:min-h-[300px]">
                   <ResponsiveContainer width="100%" height={300}>
                     <RechartsPieChart>
                       <Pie
