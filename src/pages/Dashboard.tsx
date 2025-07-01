@@ -1,33 +1,76 @@
 
+import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { FinanceCard } from '@/components/FinanceCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowUp, ArrowDown, Calendar, Plus } from 'lucide-react';
+import { useTransactions } from '@/hooks/useTransactions';
+import { TransactionModal } from '@/components/TransactionModal';
+import { AccountTypeToggle } from '@/components/AccountTypeToggle';
+import { useApp } from '@/contexts/AppContext';
 
 export default function Dashboard() {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'income' | 'expense'>('income');
+  
+  const { 
+    recentTransactions, 
+    totalIncome, 
+    totalExpense, 
+    balance, 
+    isLoading 
+  } = useTransactions();
+  
+  const { accountType } = useApp();
+
+  const handleOpenModal = (type: 'income' | 'expense') => {
+    setModalType(type);
+    setModalOpen(true);
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-darker-blue flex items-center justify-center">
+        <div className="text-white">Carregando...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-darker-blue">
-      <Header title="Dashboard Financeiro" showUserToggle={true} />
+      <Header title={`Dashboard ${accountType === 'personal' ? 'Pessoal' : 'Empresarial'}`} />
       
       <main className="p-6">
+        {/* Toggle de Conta */}
+        <div className="mb-6 flex justify-end">
+          <AccountTypeToggle />
+        </div>
+
         {/* Cards de Resumo */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <FinanceCard
             title="Receitas"
-            value="R$ 8.450,00"
+            value={formatCurrency(totalIncome)}
             type="income"
             icon={<ArrowUp className="h-4 w-4" />}
           />
           <FinanceCard
             title="Despesas"
-            value="R$ 3.200,00"
+            value={formatCurrency(totalExpense)}
             type="expense"
             icon={<ArrowDown className="h-4 w-4" />}
           />
           <FinanceCard
             title="Saldo Atual"
-            value="R$ 5.250,00"
+            value={formatCurrency(balance)}
             type="balance"
             icon={<Calendar className="h-4 w-4" />}
           />
@@ -46,7 +89,11 @@ export default function Dashboard() {
             <CardHeader>
               <CardTitle className="text-white flex items-center justify-between">
                 Últimas Transações
-                <Button size="sm" className="bg-green-primary hover:bg-green-hover">
+                <Button 
+                  size="sm" 
+                  onClick={() => handleOpenModal('income')}
+                  className="bg-green-primary hover:bg-green-hover"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Adicionar
                 </Button>
@@ -54,84 +101,74 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {[
-                  { desc: 'Supermercado Extra', value: '-R$ 250,00', date: '15/01/2024', type: 'expense' },
-                  { desc: 'Salário Empresa', value: '+R$ 4.500,00', date: '10/01/2024', type: 'income' },
-                  { desc: 'Conta de Luz', value: '-R$ 180,00', date: '05/01/2024', type: 'expense' },
-                ].map((transaction, index) => (
-                  <div key={index} className="flex items-center justify-between py-2 border-b border-gray-700 last:border-b-0">
-                    <div>
-                      <p className="text-white font-medium">{transaction.desc}</p>
-                      <p className="text-gray-400 text-sm">{transaction.date}</p>
+                {recentTransactions.length > 0 ? (
+                  recentTransactions.map((transaction) => (
+                    <div key={transaction.id} className="flex items-center justify-between py-2 border-b border-gray-700 last:border-b-0">
+                      <div>
+                        <p className="text-white font-medium">{transaction.title}</p>
+                        <p className="text-gray-400 text-sm">
+                          {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                          {transaction.categories && (
+                            <span className="ml-2">• {transaction.categories.name}</span>
+                          )}
+                        </p>
+                      </div>
+                      <span className={`font-bold ${
+                        transaction.type === 'income' ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                      </span>
                     </div>
-                    <span className={`font-bold ${
-                      transaction.type === 'income' ? 'text-green-400' : 'text-red-400'
-                    }`}>
-                      {transaction.value}
-                    </span>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-gray-400 text-center py-4">
+                    Nenhuma transação encontrada
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Categorias Mais Gastas */}
+          {/* Ações Rápidas */}
           <Card className="bg-dark-blue border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white">Categorias Mais Gastas</CardTitle>
+              <CardTitle className="text-white">Ações Rápidas</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {[
-                  { category: 'Alimentação', value: 'R$ 850,00', percentage: 65 },
-                  { category: 'Transporte', value: 'R$ 420,00', percentage: 32 },
-                  { category: 'Lazer', value: 'R$ 180,00', percentage: 14 },
-                ].map((item, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-white">{item.category}</span>
-                      <span className="text-gray-400">{item.value}</span>
-                    </div>
-                    <div className="w-full bg-gray-700 rounded-full h-2">
-                      <div 
-                        className="bg-green-primary h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${item.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
+              <div className="grid grid-cols-2 gap-4">
+                <Button 
+                  onClick={() => handleOpenModal('income')}
+                  className="bg-green-primary hover:bg-green-hover text-white flex flex-col items-center p-6 h-auto"
+                >
+                  <Plus className="h-6 w-6 mb-2" />
+                  <span className="text-sm">Nova Receita</span>
+                </Button>
+                <Button 
+                  onClick={() => handleOpenModal('expense')}
+                  className="bg-red-600 hover:bg-red-700 text-white flex flex-col items-center p-6 h-auto"
+                >
+                  <ArrowDown className="h-6 w-6 mb-2" />
+                  <span className="text-sm">Nova Despesa</span>
+                </Button>
+                <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700 flex flex-col items-center p-6 h-auto">
+                  <Calendar className="h-6 w-6 mb-2" />
+                  <span className="text-sm">Planejamento</span>
+                </Button>
+                <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700 flex flex-col items-center p-6 h-auto">
+                  <ArrowUp className="h-6 w-6 mb-2" />
+                  <span className="text-sm">Relatórios</span>
+                </Button>
               </div>
             </CardContent>
           </Card>
         </div>
-
-        {/* Ações Rápidas */}
-        <Card className="bg-dark-blue border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-white">Ações Rápidas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button className="bg-green-primary hover:bg-green-hover text-white flex flex-col items-center p-6 h-auto">
-                <Plus className="h-6 w-6 mb-2" />
-                <span className="text-sm">Nova Receita</span>
-              </Button>
-              <Button className="bg-red-600 hover:bg-red-700 text-white flex flex-col items-center p-6 h-auto">
-                <ArrowDown className="h-6 w-6 mb-2" />
-                <span className="text-sm">Nova Despesa</span>
-              </Button>
-              <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700 flex flex-col items-center p-6 h-auto">
-                <Calendar className="h-6 w-6 mb-2" />
-                <span className="text-sm">Planejamento</span>
-              </Button>
-              <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700 flex flex-col items-center p-6 h-auto">
-                <ArrowUp className="h-6 w-6 mb-2" />
-                <span className="text-sm">Relatórios</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </main>
+
+      <TransactionModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        type={modalType}
+      />
     </div>
   );
 }

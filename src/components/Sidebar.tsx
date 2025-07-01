@@ -10,6 +10,8 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const menuItems = [
   { 
@@ -38,6 +40,13 @@ const menuItems = [
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   return (
     <div className={`bg-dark-blue border-r border-gray-700 transition-all duration-300 ${
@@ -91,7 +100,7 @@ export function Sidebar() {
         <Button
           variant="ghost"
           className="w-full flex items-center justify-start text-gray-300 hover:text-white hover:bg-gray-700"
-          onClick={() => {/* Implementar logout */}}
+          onClick={handleSignOut}
         >
           <LogOut className="h-5 w-5 flex-shrink-0" />
           {!isCollapsed && <span className="ml-3 text-sm">Sair</span>}
