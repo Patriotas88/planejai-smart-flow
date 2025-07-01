@@ -12,15 +12,19 @@ import {
   Target,
   AlertCircle
 } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { formatCurrency } from '@/lib/utils';
+import { TransactionModal } from '@/components/TransactionModal';
 
 interface DashboardProps {
   onMenuClick?: () => void;
 }
 
 export default function Dashboard({ onMenuClick }: DashboardProps) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { 
     transactions, 
@@ -31,6 +35,9 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
     getBalance,
     getCurrentMonthTransactions 
   } = useApp();
+
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
 
   const currentMonthTransactions = getCurrentMonthTransactions();
   const totalIncome = getTotalIncome();
@@ -116,19 +123,34 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button className="bg-green-primary hover:bg-green-600 text-white">
+              <Button 
+                className="bg-green-primary hover:bg-green-600 text-white"
+                onClick={() => setShowIncomeModal(true)}
+              >
                 <PlusCircle className="h-4 w-4 mr-2" />
                 Nova Receita
               </Button>
-              <Button variant="outline" className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white">
+              <Button 
+                variant="outline" 
+                className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                onClick={() => setShowExpenseModal(true)}
+              >
                 <CreditCard className="h-4 w-4 mr-2" />
                 Nova Despesa
               </Button>
-              <Button variant="outline" className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white">
+              <Button 
+                variant="outline" 
+                className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white"
+                onClick={() => navigate('/planejamento')}
+              >
                 <Target className="h-4 w-4 mr-2" />
                 Definir Meta
               </Button>
-              <Button variant="outline" className="border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white">
+              <Button 
+                variant="outline" 
+                className="border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white"
+                onClick={() => navigate('/relatorios')}
+              >
                 <Calendar className="h-4 w-4 mr-2" />
                 Ver Relatório
               </Button>
@@ -136,6 +158,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
           </CardContent>
         </Card>
 
+        {/* grid with recent transactions and budget alerts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Transações Recentes */}
           <Card className="bg-dark-blue border-gray-700">
@@ -227,6 +250,19 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
           </Card>
         </div>
       </main>
+
+      {/* Modais de Transação */}
+      <TransactionModal
+        open={showIncomeModal}
+        onClose={() => setShowIncomeModal(false)}
+        type="income"
+      />
+      
+      <TransactionModal
+        open={showExpenseModal}
+        onClose={() => setShowExpenseModal(false)}
+        type="expense"
+      />
     </div>
   );
 }

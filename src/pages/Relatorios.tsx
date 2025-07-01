@@ -9,6 +9,9 @@ import { Download, TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide
 import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
+import { useExportPDF } from '@/hooks/useExportPDF';
+import { useApp } from '@/contexts/AppContext';
+import { toast } from 'sonner';
 
 interface RelatoriosProps {
   onMenuClick?: () => void;
@@ -20,6 +23,10 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
     to: new Date(),
   });
   const [selectedPeriod, setSelectedPeriod] = useState('30');
+  const [isExporting, setIsExporting] = useState(false);
+
+  const { exportToPDF } = useExportPDF();
+  const { transactions, getTotalIncome, getTotalExpenses, getBalance } = useApp();
 
   // Dados mockados para os gráficos
   const monthlyData = [
@@ -58,9 +65,21 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
     });
   };
 
-  const exportReport = () => {
-    // Implementar exportação de relatório
-    console.log('Exportando relatório...');
+  const exportReport = async () => {
+    setIsExporting(true);
+    try {
+      const totalIncome = getTotalIncome();
+      const totalExpenses = getTotalExpenses();
+      const balance = getBalance();
+      
+      await exportToPDF(totalIncome, totalExpenses, balance, transactions);
+      toast.success('Relatório exportado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao exportar relatório');
+      console.error('Export error:', error);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -109,10 +128,11 @@ export default function Relatorios({ onMenuClick }: RelatoriosProps) {
               <div className="flex items-end">
                 <Button 
                   onClick={exportReport}
+                  disabled={isExporting}
                   className="bg-green-primary hover:bg-green-600 text-white"
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Exportar
+                  {isExporting ? 'Exportando...' : 'Exportar'}
                 </Button>
               </div>
             </div>
