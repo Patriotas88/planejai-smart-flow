@@ -22,9 +22,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
+import { useTransactions } from '@/hooks/useTransactions';
+import { useCategories } from '@/hooks/useCategories';
 import { formatCurrency } from '@/lib/utils';
 import { TransactionModal } from '@/components/TransactionModal';
-import { AccountTypeToggle } from '@/components/AccountTypeToggle';
 
 interface DashboardProps {
   onMenuClick?: () => void;
@@ -33,38 +34,25 @@ interface DashboardProps {
 export default function Dashboard({ onMenuClick }: DashboardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { accountType } = useApp();
   const { 
-    accountType,
     transactions, 
-    categories, 
-    budgets,
-    getTotalIncome,
-    getTotalExpenses,
-    getBalance,
-    getCurrentMonthTransactions 
-  } = useApp();
+    recentTransactions,
+    totalIncome,
+    totalExpense,
+    balance,
+    isLoading: transactionsLoading 
+  } = useTransactions();
+  const { categories, isLoading: categoriesLoading } = useCategories();
 
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any>(null);
 
-  const currentMonthTransactions = getCurrentMonthTransactions();
-  const totalIncome = getTotalIncome();
-  const totalExpenses = getTotalExpenses();
-  const balance = getBalance();
+  const isLoading = transactionsLoading || categoriesLoading;
 
-  const recentTransactions = transactions
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5);
-
-  const upcomingBudgets = budgets
-    .filter(budget => {
-      const spent = transactions
-        .filter(t => t.categoryId === budget.categoryId && t.type === 'expense')
-        .reduce((sum, t) => sum + t.amount, 0);
-      return spent / budget.amount > 0.8;
-    })
-    .slice(0, 3);
+  // Mock data para orçamentos (implementar futuramente)
+  const upcomingBudgets: any[] = [];
 
   const handleEditTransaction = (transaction: any) => {
     setEditingTransaction(transaction);
@@ -80,6 +68,28 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
     setShowExpenseModal(false);
     setEditingTransaction(null);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-darker-blue">
+        <Header title="Dashboard" onMenuClick={onMenuClick} showAccountToggle />
+        <main className="p-4 md:p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="bg-dark-blue border-gray-700">
+                <CardContent className="pt-6">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-600 rounded w-3/4 mb-2"></div>
+                    <div className="h-8 bg-gray-600 rounded w-1/2"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-darker-blue">
@@ -116,7 +126,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                 {formatCurrency(totalIncome)}
               </div>
               <p className="text-xs text-gray-400">
-                +12% em relação ao mês anterior
+                Total de receitas registradas
               </p>
             </CardContent>
           </Card>
@@ -130,10 +140,10 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-500">
-                {formatCurrency(totalExpenses)}
+                {formatCurrency(totalExpense)}
               </div>
               <p className="text-xs text-gray-400">
-                -5% em relação ao mês anterior
+                Total de despesas registradas
               </p>
             </CardContent>
           </Card>
@@ -228,7 +238,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
               <div className="space-y-4">
                 {recentTransactions.length > 0 ? (
                   recentTransactions.map((transaction) => {
-                    const category = categories.find(c => c.id === transaction.categoryId);
+                    const category = categories.find(c => c.id === transaction.category_id);
                     return (
                       <div key={transaction.id} className="flex items-center justify-between group">
                         <div className="flex items-center space-x-3 flex-1">
@@ -236,9 +246,9 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                             transaction.type === 'income' ? 'bg-green-500' : 'bg-red-500'
                           }`} />
                           <div className="flex-1">
-                            <p className="text-white font-medium">{transaction.description}</p>
+                            <p className="text-white font-medium">{transaction.title}</p>
                             <p className="text-gray-400 text-sm">
-                              {category?.name} • {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                              {category?.name || 'Sem categoria'} • {new Date(transaction.date).toLocaleDateString('pt-BR')}
                             </p>
                           </div>
                         </div>
@@ -246,7 +256,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                           <div className={`font-bold ${
                             transaction.type === 'income' ? 'text-green-500' : 'text-red-500'
                           }`}>
-                            {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                            {transaction.type === 'income' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
                           </div>
                           <Button
                             size="sm"
@@ -261,9 +271,28 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                     );
                   })
                 ) : (
-                  <p className="text-gray-400 text-center py-4">
-                    Nenhuma transação encontrada
-                  </p>
+                  <div className="text-center py-8">
+                    <p className="text-gray-400 mb-4">Nenhuma transação encontrada</p>
+                    <div className="space-x-2">
+                      <Button 
+                        size="sm"
+                        className="bg-green-primary hover:bg-green-600 text-white"
+                        onClick={() => setShowIncomeModal(true)}
+                      >
+                        <PlusCircle className="h-4 w-4 mr-1" />
+                        Adicionar Receita
+                      </Button>
+                      <Button 
+                        size="sm"
+                        variant="outline" 
+                        className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                        onClick={() => setShowExpenseModal(true)}
+                      >
+                        <PlusCircle className="h-4 w-4 mr-1" />
+                        Adicionar Despesa
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -283,8 +312,8 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                   upcomingBudgets.map((budget) => {
                     const category = categories.find(c => c.id === budget.categoryId);
                     const spent = transactions
-                      .filter(t => t.categoryId === budget.categoryId && t.type === 'expense')
-                      .reduce((sum, t) => sum + t.amount, 0);
+                      .filter(t => t.category_id === budget.categoryId && t.type === 'expense')
+                      .reduce((sum, t) => sum + Number(t.amount), 0);
                     const percentage = (spent / budget.amount) * 100;
                     
                     return (
@@ -310,9 +339,18 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                     );
                   })
                 ) : (
-                  <p className="text-gray-400 text-center py-4">
-                    Todos os orçamentos estão dentro do limite
-                  </p>
+                  <div className="text-center py-8">
+                    <p className="text-gray-400 mb-4">Nenhum orçamento configurado</p>
+                    <Button 
+                      size="sm"
+                      variant="outline" 
+                      className="border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-white"
+                      onClick={() => navigate('/planejamento')}
+                    >
+                      <Target className="h-4 w-4 mr-1" />
+                      Configurar Orçamento
+                    </Button>
+                  </div>
                 )}
               </div>
             </CardContent>
