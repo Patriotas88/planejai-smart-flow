@@ -8,6 +8,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { AppProvider } from "./contexts/AppContext";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Transacoes from "./pages/Transacoes";
@@ -20,53 +21,55 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <AppProvider>
-            <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <Layout><Dashboard /></Layout>
-                </ProtectedRoute>
-              } />
-              <Route path="/transacoes" element={
-                <ProtectedRoute>
-                  <Layout><Transacoes /></Layout>
-                </ProtectedRoute>
-              } />
-              <Route path="/relatorios" element={
-                <ProtectedRoute>
-                  <Layout><Relatorios /></Layout>
-                </ProtectedRoute>
-              } />
-              <Route path="/categorias" element={
-                <ProtectedRoute>
-                  <Layout><Categorias /></Layout>
-                </ProtectedRoute>
-              } />
-              <Route path="/perfil" element={
-                <ProtectedRoute>
-                  <Layout><Perfil /></Layout>
-                </ProtectedRoute>
-              } />
-              <Route path="/planejamento" element={
-                <ProtectedRoute>
-                  <Layout><Planejamento /></Layout>
-                </ProtectedRoute>
-              } />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AppProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <AppProvider>
+              <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <Layout><Dashboard /></Layout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/transacoes" element={
+                  <ProtectedRoute>
+                    <Layout><Transacoes /></Layout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/relatorios" element={
+                  <ProtectedRoute>
+                    <Layout><Relatorios /></Layout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/categorias" element={
+                  <ProtectedRoute>
+                    <Layout><Categorias /></Layout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/perfil" element={
+                  <ProtectedRoute>
+                    <Layout><Perfil /></Layout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/planejamento" element={
+                  <ProtectedRoute>
+                    <Layout><Planejamento /></Layout>
+                  </ProtectedRoute>
+                } />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AppProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
