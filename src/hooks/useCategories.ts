@@ -20,7 +20,8 @@ export function useCategories() {
     queryFn: async () => {
       if (!user) return [];
       
-      const { data, error } = await supabase
+      // Using any to bypass type issues temporarily
+      const { data, error } = await (supabase as any)
         .from('categories')
         .select('*')
         .eq('user_id', user.id)
