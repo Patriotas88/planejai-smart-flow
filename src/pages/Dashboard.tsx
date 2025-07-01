@@ -4,8 +4,9 @@ import { Header } from '@/components/Header';
 import { FinanceCard } from '@/components/FinanceCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, Calendar, Plus } from 'lucide-react';
+import { ArrowUp, ArrowDown, Calendar, Plus, Edit3 } from 'lucide-react';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useFormatCurrency } from '@/hooks/useFormatCurrency';
 import { TransactionModal } from '@/components/TransactionModal';
 import { AccountTypeToggle } from '@/components/AccountTypeToggle';
 import { useApp } from '@/contexts/AppContext';
@@ -13,6 +14,7 @@ import { useApp } from '@/contexts/AppContext';
 export default function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'income' | 'expense'>('income');
+  const [editingTransaction, setEditingTransaction] = useState(null);
   
   const { 
     recentTransactions, 
@@ -23,17 +25,18 @@ export default function Dashboard() {
   } = useTransactions();
   
   const { accountType } = useApp();
+  const { formatCurrency } = useFormatCurrency();
 
   const handleOpenModal = (type: 'income' | 'expense') => {
     setModalType(type);
+    setEditingTransaction(null);
     setModalOpen(true);
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
+  const handleEditTransaction = (transaction: any) => {
+    setModalType(transaction.type);
+    setEditingTransaction(transaction);
+    setModalOpen(true);
   };
 
   if (isLoading) {
@@ -102,9 +105,9 @@ export default function Dashboard() {
             <CardContent>
               <div className="space-y-4">
                 {recentTransactions.length > 0 ? (
-                  recentTransactions.map((transaction) => (
+                  recentTransactions.map((transaction, index) => (
                     <div key={transaction.id} className="flex items-center justify-between py-2 border-b border-gray-700 last:border-b-0">
-                      <div>
+                      <div className="flex-1">
                         <p className="text-white font-medium">{transaction.title}</p>
                         <p className="text-gray-400 text-sm">
                           {new Date(transaction.date).toLocaleDateString('pt-BR')}
@@ -113,11 +116,23 @@ export default function Dashboard() {
                           )}
                         </p>
                       </div>
-                      <span className={`font-bold ${
-                        transaction.type === 'income' ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-bold ${
+                          transaction.type === 'income' ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                        </span>
+                        {index === 0 && ( // Só mostra edit na primeira (mais recente)
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEditTransaction(transaction)}
+                            className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-gray-700"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))
                 ) : (
@@ -166,8 +181,12 @@ export default function Dashboard() {
 
       <TransactionModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setEditingTransaction(null);
+        }}
         type={modalType}
+        transaction={editingTransaction}
       />
     </div>
   );

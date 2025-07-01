@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useCategories } from '@/hooks/useCategories';
-import { useTransactions } from '@/hooks/useTransactions';
+import { useTransactions, Transaction } from '@/hooks/useTransactions';
 import { useApp } from '@/contexts/AppContext';
 import { toast } from 'sonner';
 
@@ -16,18 +16,40 @@ interface TransactionModalProps {
   open: boolean;
   onClose: () => void;
   type: 'income' | 'expense';
+  transaction?: Transaction; // Para edição
 }
 
-export function TransactionModal({ open, onClose, type }: TransactionModalProps) {
+export function TransactionModal({ open, onClose, type, transaction }: TransactionModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   
-  const { displayValue, numericValue, handleChange } = useCurrency();
+  const { displayValue, numericValue, handleChange, setValue } = useCurrency();
   const { categories } = useCategories();
-  const { addTransaction, isAddingTransaction } = useTransactions();
+  const { addTransaction, updateTransaction, deleteTransaction, isAddingTransaction, isUpdatingTransaction, isDeletingTransaction } = useTransactions();
   const { accountType } = useApp();
+
+  const isEditing = !!transaction;
+  const isLoading = isAddingTransaction || isUpdatingTransaction || isDeletingTransaction;
+
+  // Preencher formulário quando estiver editando
+  useEffect(() => {
+    if (transaction) {
+      setTitle(transaction.title);
+      setDescription(transaction.description || '');
+      setCategoryId(transaction.category_id || '');
+      setDate(transaction.date);
+      setValue(transaction.amount);
+    } else {
+      // Reset form when not editing
+      setTitle('');
+      setDescription('');
+      setCategoryId('');
+      setDate(new Date().toISOString().split('T')[0]);
+      handleChange('');
+    }
+  }, [transaction, setValue, handleChange]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,29 +60,50 @@ export function TransactionModal({ open, onClose, type }: TransactionModalProps)
     }
 
     try {
-      await addTransaction({
-        title,
-        amount: numericValue,
-        type,
-        account_type: accountType,
-        description: description || undefined,
-        category_id: categoryId || undefined,
-        date
-      });
+      if (isEditing) {
+        await updateTransaction({
+          id: transaction.id,
+          title,
+          amount: numericValue,
+          type,
+          account_type: accountType,
+          description: description || undefined,
+          category_id: categoryId || undefined,
+          date
+        });
+        toast.success('Transação atualizada com sucesso!');
+      } else {
+        await addTransaction({
+          title,
+          amount: numericValue,
+          type,
+          account_type: accountType,
+          description: description || undefined,
+          category_id: categoryId || undefined,
+          date
+        });
+        toast.success(`${type === 'income' ? 'Receita' : 'Despesa'} adicionada com sucesso!`);
+      }
 
-      toast.success(`${type === 'income' ? 'Receita' : 'Despesa'} adicionada com sucesso!`);
-      
-      // Reset form
-      setTitle('');
-      setDescription('');
-      setCategoryId('');
-      setDate(new Date().toISOString().split('T')[0]);
-      handleChange('');
-      
       onClose();
     } catch (error) {
-      toast.error('Erro ao adicionar transação');
-      console.error('Error adding transaction:', error);
+      toast.error(isEditing ? 'Erro ao atualizar transação' : 'Erro ao adicionar transação');
+      console.error('Error with transaction:', error);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!transaction) return;
+
+    if (confirm('Tem certeza que deseja excluir esta transação?')) {
+      try {
+        await deleteTransaction(transaction.id);
+        toast.success('Transação excluída com sucesso!');
+        onClose();
+      } catch (error) {
+        toast.error('Erro ao excluir transação');
+        console.error('Error deleting transaction:', error);
+      }
     }
   };
 
@@ -69,7 +112,7 @@ export function TransactionModal({ open, onClose, type }: TransactionModalProps)
       <DialogContent className="bg-dark-blue border-gray-700 text-white">
         <DialogHeader>
           <DialogTitle className="text-white">
-            Nova {type === 'income' ? 'Receita' : 'Despesa'}
+            {isEditing ? 'Editar' : 'Nova'} {type === 'income' ? 'Receita' : 'Despesa'}
           </DialogTitle>
         </DialogHeader>
         
@@ -144,6 +187,18 @@ export function TransactionModal({ open, onClose, type }: TransactionModalProps)
           </div>
 
           <div className="flex gap-2 pt-4">
+            {isEditing && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={isLoading}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isDeletingTransaction ? 'Excluindo...' : 'Excluir'}
+              </Button>
+            )}
+            
             <Button
               type="button"
               variant="outline"
@@ -152,16 +207,17 @@ export function TransactionModal({ open, onClose, type }: TransactionModalProps)
             >
               Cancelar
             </Button>
+            
             <Button
               type="submit"
-              disabled={isAddingTransaction}
+              disabled={isLoading}
               className={`flex-1 ${
                 type === 'income' 
                   ? 'bg-green-primary hover:bg-green-hover' 
                   : 'bg-red-600 hover:bg-red-700'
               } text-white`}
             >
-              {isAddingTransaction ? 'Salvando...' : 'Salvar'}
+              {isLoading ? 'Salvando...' : (isEditing ? 'Atualizar' : 'Salvar')}
             </Button>
           </div>
         </form>

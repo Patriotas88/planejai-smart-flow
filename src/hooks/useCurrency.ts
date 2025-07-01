@@ -45,10 +45,16 @@ export function useCurrency(initialValue: string = '') {
     setNumericValue(value);
   }, []);
 
+  const reset = useCallback(() => {
+    setDisplayValue('');
+    setNumericValue(0);
+  }, []);
+
   return {
     displayValue,
     numericValue,
     handleChange,
-    setValue
+    setValue,
+    reset
   };
 }
