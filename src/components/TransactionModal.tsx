@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { useTransactions, Transaction } from '@/hooks/useTransactions';
 import { useApp } from '@/contexts/AppContext';
 import { toast } from 'sonner';
+import { getCurrentLocalDate } from '@/lib/dateUtils';
 
 interface TransactionModalProps {
   open: boolean;
@@ -23,7 +23,7 @@ export function TransactionModal({ open, onClose, type, transaction }: Transacti
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getCurrentLocalDate());
   
   const { displayValue, numericValue, handleChange, setValue } = useCurrency();
   const { categories } = useCategories();
@@ -46,7 +46,7 @@ export function TransactionModal({ open, onClose, type, transaction }: Transacti
       setTitle('');
       setDescription('');
       setCategoryId('');
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(getCurrentLocalDate());
       handleChange('');
     }
   }, [transaction, setValue, handleChange]);

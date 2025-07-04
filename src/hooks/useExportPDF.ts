@@ -4,6 +4,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { useFormatCurrency } from './useFormatCurrency';
 import { useApp } from '@/contexts/AppContext';
+import { getCurrentLocalDate } from '@/lib/dateUtils';
 
 export function useExportPDF() {
   const { formatCurrency } = useFormatCurrency();
@@ -93,7 +94,7 @@ export function useExportPDF() {
       }
       
       // Salvar PDF
-      const fileName = `relatorio-${accountType}-${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `relatorio-${accountType}-${getCurrentLocalDate()}.pdf`;
       pdf.save(fileName);
       
       return true;
