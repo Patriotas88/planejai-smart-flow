@@ -34,6 +34,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { useCategories } from '@/hooks/useCategories';
 import { useApp } from '@/contexts/AppContext';
 import { formatCurrency } from '@/lib/utils';
+import { formatDateToBrazilian } from '@/lib/dateUtils';
 import { TransactionModal } from '@/components/TransactionModal';
 
 interface TransacoesProps {
@@ -215,7 +216,7 @@ export default function Transacoes({ onMenuClick }: TransacoesProps) {
                       return (
                         <TableRow key={transaction.id} className="border-gray-700 hover:bg-gray-800/50">
                           <TableCell className="text-gray-300">
-                            {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                            {formatDateToBrazilian(transaction.date)}
                           </TableCell>
                           <TableCell className="text-white">
                             <div>
