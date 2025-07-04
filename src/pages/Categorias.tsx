@@ -7,6 +7,7 @@ import { CategoryModal } from '@/components/CategoryModal';
 import { useCategories, Category } from '@/hooks/useCategories';
 import { Plus, Edit, Trash2, Tag } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { formatDateToBrazilian } from '@/lib/dateUtils';
 
 interface CategoriasProps {
   onMenuClick?: () => void;
@@ -131,7 +132,7 @@ export default function Categorias({ onMenuClick }: CategoriasProps) {
                       Tipo: {category.type === 'personal' ? 'Pessoal' : 'Empresarial'}
                     </span>
                     <span className="text-gray-500">
-                      {new Date(category.created_at).toLocaleDateString('pt-BR')}
+                      {formatDateToBrazilian(category.created_at)}
                     </span>
                   </div>
                 </CardContent>

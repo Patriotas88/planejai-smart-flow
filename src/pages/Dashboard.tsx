@@ -25,6 +25,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useCategories } from '@/hooks/useCategories';
 import { formatCurrency } from '@/lib/utils';
+import { formatDateToBrazilian } from '@/lib/dateUtils';
 import { TransactionModal } from '@/components/TransactionModal';
 
 interface DashboardProps {
@@ -248,7 +249,7 @@ export default function Dashboard({ onMenuClick }: DashboardProps) {
                           <div className="flex-1">
                             <p className="text-white font-medium">{transaction.title}</p>
                             <p className="text-gray-400 text-sm">
-                              {category?.name || 'Sem categoria'} • {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                              {category?.name || 'Sem categoria'} • {formatDateToBrazilian(transaction.date)}
                             </p>
                           </div>
                         </div>
